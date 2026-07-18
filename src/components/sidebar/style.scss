@@ -1,0 +1,54 @@
+@use "@/assets/styles/variables" as *;
+
+.sidebar {
+  width: 40px;
+  flex-shrink: 0;
+  background: $color-bg-panel-alt;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  &__items {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  &__item {
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: $color-text-muted;
+    transition: all 0.15s ease;
+
+    &:hover {
+      color: $color-text-light;
+      background: rgba(212, 175, 55, 0.08);
+    }
+
+    &--active {
+      color: $color-gold-bright;
+      border-top: 1px solid $color-gold-bright;
+      border-bottom: 1px solid $color-gold-bright;
+    }
+  }
+
+  &__settings {
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: $radius-sm;
+    background: none;
+    border: none;
+    color: $color-text-muted;
+
+    &:hover {
+      color: $color-gold-bright;
+    }
+  }
+}

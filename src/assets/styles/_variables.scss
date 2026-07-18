@@ -1,0 +1,38 @@
+// src/assets/styles/_variables.scss
+// Tokens de design do tema "Potter-PG" — paleta grifinoria (bordo + ouro).
+
+// Cores
+$color-bg-app: #170406;
+$color-bg-panel: #2a080c;
+$color-bg-panel-alt: #34090e;
+$color-border-gold: rgba(212, 175, 55, 0.35);
+$color-border-gold-strong: #d4af37;
+
+$color-gold: #d4af37;
+$color-gold-bright: #f2c94c;
+$color-red: #8c1a24;
+$color-red-bright: #c8202f;
+$color-red-deep: #4a0d12;
+
+$color-parchment: #ece0c2;
+$color-parchment-dim: #d8c79e;
+
+$color-text-light: #f5ead1;
+$color-text-muted: #b99a6f;
+$color-text-panel: #2a1a12;
+
+$color-hp: #c8202f;
+$color-mp: #2f6fb0;
+$color-xp: #d4af37;
+
+// Tipografia
+$font-display: "Junge", "Times New Roman", serif;
+$font-body: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+
+// Espacamento / raio
+$radius-sm: 6px;
+$radius-md: 10px;
+$radius-lg: 16px;
+
+// Sombra padrao para cards e paineis
+$shadow-panel: 0 8px 24px rgba(0, 0, 0, 0.45);

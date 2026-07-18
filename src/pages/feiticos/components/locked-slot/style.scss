@@ -1,0 +1,13 @@
+@use "@/assets/styles/variables" as *;
+
+.locked-slot {
+  aspect-ratio: 3 / 4;
+  border: 1px dashed $color-border-gold;
+  border-radius: $radius-md;
+  background: $color-bg-panel-alt;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: $color-gold-bright;
+  opacity: 0.5;
+}

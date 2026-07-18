@@ -1,0 +1,57 @@
+@use "@/assets/styles/variables" as *;
+
+.feiticos-page {
+  height: calc(100vh - 68px);
+  min-height: 0;
+  padding: 28px 70px;
+  display: flex;
+  flex-direction: column;
+
+  &__heading {
+    flex-shrink: 0;
+    margin-bottom: 20px;
+
+    h1 {
+      font-size: 26px;
+      letter-spacing: 0.04em;
+      color: $color-text-light;
+      position: relative;
+      display: inline-block;
+      padding-bottom: 10px;
+      font-weight: 400;
+
+      &::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 46px;
+        height: 3px;
+        background: $color-gold-bright;
+        border-radius: 2px;
+      }
+    }
+  }
+
+  &__status {
+    flex-shrink: 0;
+    color: $color-text-muted;
+    font-size: 14px;
+    margin-top: 24px;
+
+    &--error {
+      color: $color-hp;
+    }
+  }
+
+  &__grid {
+    flex: 1;
+    min-height: 0;
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    align-content: start;
+    gap: 14px;
+    overflow: hidden;
+  }
+}

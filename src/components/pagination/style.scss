@@ -1,0 +1,45 @@
+@use "@/assets/styles/variables" as *;
+
+.pagination {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 28px;
+
+  &__arrow,
+  &__page {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: $radius-sm;
+    border: 1px solid $color-border-gold;
+    background: $color-bg-panel-alt;
+    color: $color-text-light;
+    font-size: 13px;
+    font-weight: 500;
+
+    &:hover:not(:disabled) {
+      border-color: $color-border-gold-strong;
+    }
+
+    &:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+  }
+
+  &__page--active {
+    background: linear-gradient(180deg, $color-gold-bright, $color-gold);
+    color: $color-bg-app;
+    border-color: transparent;
+  }
+
+  &__ellipsis {
+    color: $color-text-muted;
+    padding: 0 4px;
+  }
+}
