@@ -12,6 +12,12 @@ export type HistoryItem =
   | { id: string; type: "dice"; user: string; sides: Die["sides"]; result: number }
   | { id: string; type: "join"; user: string };
 
+export type NarrationMessage = {
+  id: string;
+  user: string;
+  text: string;
+};
+
 export type ScoreboardRow = {
   name: string;
   hp: string;

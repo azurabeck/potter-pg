@@ -22,13 +22,16 @@ de grade de cartas, com busca, filtros e paginação.
 Em vez de uma quantidade fixa de cards por página, `feiticos-page__grid`
 ocupa a altura restante da tela (`flex: 1` dentro de um `.feiticos-page`
 em coluna com `height: 100%`) e um `ResizeObserver` mede suas dimensões
-reais para calcular quantos cards cabem sem cortar nenhum
-(`calculateFitCount`, em `functions.ts`) — replica o mesmo cálculo de
-colunas (`auto-fill`/`minmax(130px, 1fr)`) e linhas (baseado no
-`aspect-ratio: 3/4` do `spell-card`) que o CSS do grid faz. O resultado
-vira `pageSize`, usado por `paginateSpells`/`totalPages`/
-`emptySlotsCount`. Ao redimensionar a janela (ou mudar os filtros),
-`pageSize` é recalculado e a página volta pra 1.
+reais pra calcular quantas colunas e linhas completas cabem sem cortar
+nenhum card (`calculateGridMetrics`, em `functions.ts`) — usa o mesmo
+`CARD_TARGET_WIDTH`/`CARD_ASPECT_RATIO`/`GRID_GAP` que o `spell-card`
+usa (`aspect-ratio: 100/139`). O número de colunas vira o
+`grid-template-columns` inline do grid (`repeat(${columns}, minmax(0, 1fr))`);
+colunas × linhas vira `pageSize`, usado por `paginateSpells`/
+`totalPages`/`emptySlotsCount` (que agora recebe `columns`, não
+`pageSize`, pra saber quantos `LockedSlot` faltam pra fechar a última
+linha). Ao redimensionar a janela (ou mudar os filtros), tudo é
+recalculado e a página volta pra 1.
 
 `SPELLS_PAGE_SIZE_FALLBACK` (`services/genene_settings.ts`) é só o valor
 inicial usado antes do primeiro `ResizeObserver` medir o espaço real.
@@ -50,7 +53,7 @@ bloqueado, a imagem usada é `attributes.image_url`; quando desbloqueado,
 ```
 feiticos/
 ├── index.tsx        // página (fetch + estado + composição + ResizeObserver)
-├── functions.ts      // paginação + calculateFitCount
+├── functions.ts      // paginação + calculateGridMetrics
 ├── style.scss
 ├── doc.md
 └── components/

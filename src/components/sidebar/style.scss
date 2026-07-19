@@ -1,4 +1,48 @@
 @use "@/assets/styles/variables" as *;
+
+// Aparência "só ícones", usada tanto no toggle manual (.sidebar--collapsed)
+// quanto no breakpoint mobile (abaixo de 720px) — mesma regra nos dois casos.
+@mixin sidebar-icon-only {
+  padding-inline: 10px;
+
+  .sidebar__brand strong,
+  .sidebar__brand span,
+  .sidebar__profile strong,
+  .sidebar__profile span,
+  .sidebar__item-label,
+  .sidebar__logout {
+    display: none;
+  }
+
+  .sidebar__brand {
+    justify-content: center;
+  }
+
+  .sidebar__profile img,
+  .sidebar__profile .sidebar__avatar-fallback {
+    width: 38px;
+    height: 38px;
+  }
+
+  .sidebar__item {
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .sidebar__item--active::after {
+    right: 50%;
+    top: auto;
+    bottom: -4px;
+    width: 12px;
+    height: 2px;
+    transform: translateX(50%);
+  }
+
+  .sidebar__bottom {
+    justify-content: center;
+  }
+}
+
 .sidebar {
   height: 100vh;
   min-height: 0;
@@ -6,13 +50,171 @@
   flex-direction: column;
   padding: 17px 16px 18px;
   background: $color-bg-panel;
+  transition: padding .18s ease;
 
-  &__brand { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: #fff; strong { font-size: 11px; font-weight: 500; } span { padding: 3px 10px; background: $color-bg-panel-alt; color: #c7c3d4; font-size: 6px; text-transform: lowercase; } }
-  &__profile { display: flex; flex-direction: column; align-items: center; padding: 31px 0 37px; text-align: center; img, .sidebar__avatar-fallback { width: 58px; height: 58px; border-radius: 50%; object-fit: cover; background: #d9d9d9; } strong { margin-top: 16px; font-size: 10px; font-weight: 400; } span { margin-top: 7px; max-width: 145px; overflow: hidden; text-overflow: ellipsis; color: #8e8a9f; font-size: 7px; white-space: nowrap; } }
-  &__avatar-fallback { display: grid; place-items: center; color: #272042; font-size: 16px; font-weight: 700; }
-  &__items { display: flex; flex-direction: column; gap: 8px; }
-  &__item { position: relative; padding-left: 0; color: #fff; font-size: 9px; line-height: 1.15; opacity: .92; transition: .15s ease; &:hover { color: $color-border-gold-strong; } &--active { color: $color-red-bright; } &--active::after { content: ""; position: absolute; right: 0; top: 50%; width: 2px; height: 12px; background: $color-red-bright; transform: translateY(-50%); } }
-  &__logout { margin-top: auto; align-self: flex-start; padding: 0; border: 0; background: none; color: $color-red-bright; font-size: 9px; }
+  &__brand {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    color: #fff;
 
-  @media (max-width: 720px) { padding-inline: 10px; &__brand strong, &__brand span, &__profile strong, &__profile span, &__item, &__logout { font-size: 0; } &__profile img, &__profile .sidebar__avatar-fallback { width: 42px; height: 42px; } &__item { height: 18px; &::before { content: ""; display: block; width: 6px; height: 6px; margin: auto; border-radius: 50%; background: #aaa6bd; } &--active::before { background: $color-red-bright; } } }
+    strong {
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    span {
+      padding: 3px 10px;
+      background: $color-bg-panel-alt;
+      color: #c7c3d4;
+      font-size: 6px;
+      text-transform: lowercase;
+    }
+  }
+
+  &__profile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 31px 0 37px;
+    text-align: center;
+
+    img,
+    .sidebar__avatar-fallback {
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: #d9d9d9;
+      transition: width .18s ease, height .18s ease;
+    }
+
+    strong {
+      margin-top: 16px;
+      font-size: 10px;
+      font-weight: 400;
+    }
+
+    span {
+      margin-top: 7px;
+      max-width: 145px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #8e8a9f;
+      font-size: 7px;
+      white-space: nowrap;
+    }
+  }
+
+  &__avatar-fallback {
+    display: grid;
+    place-items: center;
+    color: #272042;
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  &__items {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  &__item {
+    position: relative;
+    min-height: 34px;
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    color: #fff;
+    font-size: 10px;
+    line-height: 1.15;
+    opacity: 0.78;
+    background: transparent;
+    border-radius: 6px;
+    transition: opacity .15s ease, background-color .15s ease, color .15s ease;
+
+    &:hover {
+      opacity: 1;
+      background: rgba(255, 255, 255, .05);
+      color: $color-border-gold-strong;
+    }
+
+    &--active {
+      opacity: 1;
+      color: $color-red-bright;
+      background: rgba(255, 80, 111, .1);
+    }
+
+    &--active::after {
+      content: "";
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      width: 2px;
+      height: 12px;
+      background: $color-red-bright;
+      transform: translateY(-50%);
+    }
+  }
+
+  &__item-icon {
+    width: 15px;
+    height: 15px;
+    flex: 0 0 15px;
+  }
+
+  &__item-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__bottom {
+    margin-top: auto;
+    padding-top: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border-top: 1px solid rgba(255, 255, 255, .06);
+  }
+
+  &__logout {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: $color-red-bright;
+    font-size: 9px;
+  }
+
+  &__collapse-toggle {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 22px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 50%;
+    background: $color-bg-panel-alt;
+    color: #c7c3d4;
+    transition: background-color .15s ease, color .15s ease;
+
+    &:hover {
+      color: #fff;
+      background: $color-bg-panel-soft;
+    }
+  }
+
+  &--collapsed {
+    @include sidebar-icon-only;
+  }
+
+  @media (max-width: 720px) {
+    @include sidebar-icon-only;
+  }
 }

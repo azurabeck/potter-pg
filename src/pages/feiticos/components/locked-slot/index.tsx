@@ -5,8 +5,8 @@ import "./style.scss";
 /**
  * Preenche slots vazios da grade quando ainda não existem feitiços
  * suficientes cadastrados no Firestore para completar a página (ver
- * calculateFitCount em pages/feiticos/functions.ts, que calcula quantos
- * cards cabem no espaço disponível).
+ * calculateGridMetrics em pages/feiticos/functions.ts, que calcula
+ * quantas colunas/linhas cabem no espaço disponível).
  */
 export default function LockedSlot() {
   return (

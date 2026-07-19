@@ -12,7 +12,7 @@ export const APP_NAME = "POTTER-PG";
 
 // Estimativa usada como quantidade de cards da grade de feiticos so no
 // primeiro render, antes do ResizeObserver medir quantos cabem de verdade
-// no espaco disponivel (ver calculateFitCount em pages/feiticos/functions.ts).
+// no espaco disponivel (ver calculateGridMetrics em pages/feiticos/functions.ts).
 export const SPELLS_PAGE_SIZE_FALLBACK = 30;
 
 // TODO: substituir por dados reais assim que hp/mp/xp/nivel_geral/meta_atual

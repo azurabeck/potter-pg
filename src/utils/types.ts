@@ -122,8 +122,8 @@ export interface CharacterVarinha {
 }
 
 // Personagem vindo da colecao "characters" do Firestore. Contempla tanto
-// personagens de jogador ("player") quanto NPCs (character_type diferente),
-// mas hoje so buscamos os de tipo "player" do usuario logado.
+// personagens de jogador ("player", buscados por getPlayerCharacters)
+// quanto NPCs ("npc", buscados por getNpcCharacters — ver actions/get/characters.ts).
 export interface Character {
   id: string;
   name: string;

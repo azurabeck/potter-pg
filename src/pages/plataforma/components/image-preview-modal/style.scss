@@ -1,0 +1,31 @@
+// Usa a classe base .platform-modal (overlay) e .platform-modal__close
+// (definidas em pages/plataforma/style.scss, compartilhadas com os outros
+// modais da página) — aqui só os modificadores exclusivos da visualização
+// de imagem em tela cheia.
+
+.platform-modal--image {
+  background: rgba(5, 4, 14, 0.9);
+}
+
+.platform-modal__image-panel {
+  position: relative;
+  width: min(1040px, 92vw);
+  height: min(760px, 88vh);
+  display: grid;
+  place-items: center;
+
+  img {
+    max-width: 100%;
+    max-height: 100%;
+    display: block;
+    object-fit: contain;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+  }
+}
+
+.platform-modal__close--image {
+  top: -42px;
+  right: 0;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}

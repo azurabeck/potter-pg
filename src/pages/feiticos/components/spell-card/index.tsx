@@ -22,6 +22,7 @@ export default function SpellCard({ spell, locked, onClick }: SpellCardProps) {
       onClick={onClick}
     >
       <img src={imageUrl} alt={a.name} className="spell-card__image" loading="lazy" />
+      <span className="spell-card__label">{a.name}</span>
       {locked && (
         <div className="spell-card__lock-overlay">
           <Lock size={20} />

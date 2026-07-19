@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { GripHorizontal, Pin, PinOff, X } from "lucide-react";
+import { GripHorizontal, Pin, PinOff, User, X } from "lucide-react";
 import { CURRENT_CHARACTER_STUB } from "@/services/genene_settings";
 import { useCharacter } from "@/context/character";
-import { initials } from "@/utils";
+import { cx, initials } from "@/utils";
 import {
   formatAttributeLabel,
   getAttributeIcon,
@@ -13,7 +13,7 @@ import {
 import "./style.scss";
 
 export default function CharacterPanel() {
-  const { activeCharacter, characters, selectCharacter } = useCharacter();
+  const { activeCharacter, characters, selectCharacter, sheetVisible, showSheet, hideSheet } = useCharacter();
   const [attributesOpen, setAttributesOpen] = useState(false);
   const [attributesPinned, setAttributesPinned] = useState(false);
   const [panelPosition, setPanelPosition] = useState({ x: 0, y: 0 });
@@ -110,8 +110,44 @@ export default function CharacterPanel() {
   const imageUrl = activeCharacter?.image_url ?? activeCharacter?.image_url_ano_1;
 
   return (
-    <aside className="character-panel" aria-label="Ficha do personagem ativo">
-      <section className="character-panel__portrait-card">
+    <>
+      <button
+        type="button"
+        className="character-panel__mobile-trigger"
+        onClick={showSheet}
+        aria-label="Abrir ficha do personagem"
+      >
+        {imageUrl ? (
+          <img src={imageUrl} alt="" />
+        ) : (
+          <span className="character-panel__mobile-trigger-fallback" aria-hidden="true">
+            <User size={20} strokeWidth={1.7} />
+          </span>
+        )}
+      </button>
+
+      {sheetVisible && (
+        <div
+          className="character-panel__backdrop"
+          onClick={hideSheet}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={cx("character-panel", sheetVisible && "character-panel--open")}
+        aria-label="Ficha do personagem ativo"
+      >
+        <button
+          type="button"
+          className="character-panel__close"
+          onClick={hideSheet}
+          aria-label="Fechar ficha do personagem"
+        >
+          <X size={16} />
+        </button>
+
+        <section className="character-panel__portrait-card">
         {imageUrl ? (
           <img src={imageUrl} alt={name} />
         ) : (
@@ -257,7 +293,8 @@ export default function CharacterPanel() {
             </div>
           )}
         </div>
-      </section>
-    </aside>
+        </section>
+      </aside>
+    </>
   );
 }

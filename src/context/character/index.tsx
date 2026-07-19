@@ -21,7 +21,7 @@ const CharacterContext = createContext<CharacterContextValue>({
   activeCharacter: null,
   loading: false,
   selectCharacter: () => {},
-  sheetVisible: true,
+  sheetVisible: false,
   showSheet: () => {},
   hideSheet: () => {},
 });
@@ -31,7 +31,7 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [sheetVisible, setSheetVisible] = useState(true);
+  const [sheetVisible, setSheetVisible] = useState(false);
 
   useEffect(() => {
     if (!user) {

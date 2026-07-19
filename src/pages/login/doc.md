@@ -17,4 +17,4 @@ conta" no mesmo card, sem rota própria.
    detecta a nova sessão e `App.tsx` troca a tela de Login pelo shell
    normal automaticamente — este componente não precisa redirecionar.
 
-Logout fica no botão de menu do `Navbar` (`components/navbar`).
+Logout fica no `Sidebar` (`components/sidebar`).
