@@ -1,4 +1,4 @@
-// src/components/statsbar/functions.ts
+// src/components/character-panel/functions.ts
 import {
   Zap,
   BookOpen,
@@ -19,6 +19,9 @@ import {
   HeartPulse,
   Clover,
   Sparkles,
+  FlaskConical,
+  Gem,
+  Package,
   type LucideIcon,
 } from "lucide-react";
 
@@ -53,4 +56,15 @@ const ATTRIBUTE_ICONS: Record<string, LucideIcon> = {
 
 export function getAttributeIcon(name: string): LucideIcon {
   return ATTRIBUTE_ICONS[name] ?? Sparkles;
+}
+
+// Icone por categoria de item do inventario (Character.inventario.itens).
+const INVENTORY_CATEGORY_ICONS: Record<string, LucideIcon> = {
+  "Objetos Mágicos": Wand2,
+  Consumíveis: FlaskConical,
+  Mistérios: Gem,
+};
+
+export function inventoryItemIcon(categoria: string): LucideIcon {
+  return INVENTORY_CATEGORY_ICONS[categoria] ?? Package;
 }

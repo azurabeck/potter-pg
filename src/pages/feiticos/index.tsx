@@ -11,7 +11,7 @@ import { EMPTY_FILTERS, applyFilters, type SpellFilters } from "./components/fil
 import SpellCard from "./components/spell-card";
 import SpellDetailModal from "./components/spell-detail-modal";
 import LockedSlot from "./components/locked-slot";
-import { calculateFitCount, emptySlotsCount, paginateSpells, totalPages } from "./functions";
+import { calculateGridMetrics, emptySlotsCount, paginateSpells, totalPages } from "./functions";
 import "./style.scss";
 
 export default function Feiticos() {
@@ -23,6 +23,7 @@ export default function Feiticos() {
   const [page, setPage] = useState(1);
   const [selectedSpell, setSelectedSpell] = useState<Spell | null>(null);
   const [pageSize, setPageSize] = useState(SPELLS_PAGE_SIZE_FALLBACK);
+  const [columns, setColumns] = useState(5);
   const [gridNode, setGridNode] = useState<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -55,8 +56,9 @@ export default function Feiticos() {
 
     function measure() {
       const { width, height } = gridNode!.getBoundingClientRect();
-      const fit = calculateFitCount(width, height);
-      if (fit > 0) setPageSize(fit);
+      const metrics = calculateGridMetrics(width, height);
+      setColumns(metrics.columns);
+      setPageSize(metrics.pageSize);
     }
 
     measure();
@@ -75,22 +77,27 @@ export default function Feiticos() {
   }, [filters, pageSize]);
 
   const pageSpells = paginateSpells(filteredSpells, page, pageSize);
-  const emptySlots = emptySlotsCount(pageSpells.length, pageSize);
+  const emptySlots = emptySlotsCount(pageSpells.length, columns);
 
   return (
     <div className="feiticos-page">
-      <div className="feiticos-page__heading">
-        <h1>FEITIÇOS</h1>
+      <div className="feiticos-page__top">
+        <div className="feiticos-page__heading">
+          <h1>Feitiços</h1>
+        </div>
+        <FilterBar spells={spells} filters={filters} onChange={setFilters} />
       </div>
-
-      <FilterBar spells={spells} filters={filters} onChange={setFilters} />
 
       {loading && <p className="feiticos-page__status">Carregando feitiços...</p>}
       {error && <p className="feiticos-page__status feiticos-page__status--error">{error}</p>}
 
       {!loading && !error && (
         <>
-          <div className="feiticos-page__grid" ref={setGridNode}>
+          <div
+            className="feiticos-page__grid"
+            ref={setGridNode}
+            style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+          >
             {pageSpells.map((spell) => (
               <SpellCard
                 key={spell.id}

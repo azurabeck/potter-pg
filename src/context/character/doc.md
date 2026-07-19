@@ -12,14 +12,16 @@ qual deles está "ativo".
   do usuário logado.
 - Sem personagem salvo/válido, cai no primeiro da lista; sem nenhum
   personagem, `activeCharacter` fica `null`.
-- `sheetVisible` controla se a `StatsBar` (a "ficha" do personagem) está
-  visível. `hideSheet()` é chamado pelo X dentro da própria `StatsBar`;
-  `showSheet()` é chamado pelo `Navbar` sempre que o avatar/nome é
-  clicado, então a ficha volta a aparecer mesmo se tiver sido fechada.
+- `sheetVisible` controla se o `CharacterPanel` (a "ficha" do
+  personagem, painel fixo à direita) está visível. `hideSheet()` é
+  chamado pelo X dentro do próprio `CharacterPanel`; `showSheet()` é
+  chamado pelo `Navbar` sempre que o avatar/nome é clicado, então a
+  ficha volta a aparecer mesmo se tiver sido fechada.
 
 Hoje `Navbar` (dropdown do avatar, nome/casa/ano/avatar exibidos) e
-`StatsBar` (moedas, atributos, visibilidade da ficha) consomem isso. O
-bloqueio de feitiços em `pages/feiticos` continua usando
+`CharacterPanel` (retrato, atributos, inventário rápido, visibilidade da
+ficha) consomem isso. O bloqueio de feitiços em `pages/feiticos` continua
+usando
 `CURRENT_CHARACTER_STUB` (`services/genene_settings.ts`) porque
 hp/mp/xp/nivel_geral/meta_atual ainda não existem nos documentos reais de
 `characters`.

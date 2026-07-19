@@ -18,7 +18,7 @@ export const SPELLS_PAGE_SIZE_FALLBACK = 30;
 // TODO: substituir por dados reais assim que hp/mp/xp/nivel_geral/meta_atual
 // existirem na colecao "characters" do Firestore. Nome/casa/ano/avatar ja
 // vem do personagem real selecionado (context/character); o restante (usado
-// pelo StatsBar e pelo bloqueio de feiticos) ainda usa este stub.
+// pelo CharacterPanel e pelo bloqueio de feiticos) ainda usa este stub.
 export const CURRENT_CHARACTER_STUB = {
   nome: "Tomas Black",
   casa: "Grifinoria",

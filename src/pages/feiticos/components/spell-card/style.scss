@@ -2,39 +2,40 @@
 
 .spell-card {
   position: relative;
-  aspect-ratio: 3 / 4;
-  padding: 0;
-  border: 1px solid $color-border-gold-strong;
-  border-radius: $radius-md;
+  width: 100%;
+  min-width: 0;
+  aspect-ratio: 100 / 139;
+  padding: 3px;
+  border: 1px dashed $color-border-gold-strong;
+  border-radius: 0;
   overflow: hidden;
-  background: $color-bg-app;
-  box-shadow: $shadow-panel;
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  background: $color-bg-panel-alt;
+  box-shadow: none;
+  transition: transform .16s ease, border-color .16s ease, background .16s ease;
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.5);
+    border-style: solid;
+    background: $color-bg-panel-soft;
   }
 
-  &--locked {
-    filter: grayscale(1);
-  }
+  &--locked { filter: grayscale(.8) brightness(.68); }
 
   &__image {
     width: 100%;
     height: 100%;
     object-fit: cover;
     display: block;
+    border-radius: 2px;
+    opacity: .52;
   }
 
   &__lock-overlay {
     position: absolute;
     inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(10, 4, 4, 0.55);
-    color: $color-gold-bright;
+    display: grid;
+    place-items: center;
+    background: rgba(39, 32, 66, .28);
+    color: $color-border-gold-strong;
   }
 }

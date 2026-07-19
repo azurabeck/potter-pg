@@ -12,34 +12,59 @@ export function totalPages(spellsCount: number, pageSize: number): number {
   return Math.max(1, Math.ceil(spellsCount / pageSize));
 }
 
-/** Quantos slots "bloqueado/vazio" faltam para completar a grade da pagina. */
-export function emptySlotsCount(spellsOnPage: number, pageSize: number): number {
-  return Math.max(0, pageSize - spellsOnPage);
+/** Quantos slots vazios faltam para completar a ultima linha da pagina. */
+export function emptySlotsCount(spellsOnPage: number, columns: number): number {
+  if (columns <= 0 || spellsOnPage === 0) return 0;
+  const remainder = spellsOnPage % columns;
+  return remainder === 0 ? 0 : columns - remainder;
 }
 
-// Precisam bater com o CSS de .feiticos-page__grid / .spell-card
-// (style.scss): minmax(<CARD_MIN_WIDTH>px, 1fr), gap <GRID_GAP>px e
-// aspect-ratio 3/4 no card.
-const CARD_MIN_WIDTH = 130;
-const CARD_ASPECT_RATIO = 3 / 4; // largura / altura
-const GRID_GAP = 14;
+// Estes valores precisam continuar iguais aos usados em style.scss.
+// O objetivo não é impor uma quantidade por página: eles só definem o
+// tamanho desejado da carta. A quantidade final é calculada pelo espaço real.
+const CARD_TARGET_WIDTH = 82;
+const CARD_ASPECT_RATIO = 100 / 139; // largura / altura
+const GRID_GAP = 7;
+
+export interface SpellGridMetrics {
+  columns: number;
+  rows: number;
+  pageSize: number;
+}
 
 /**
- * Calcula quantos cards de feitiço cabem, sem cortar nenhum, dentro de um
- * container com as dimensoes dadas — replica o mesmo calculo de colunas
- * (auto-fill/minmax) e linhas que o CSS do grid faz, pra saber de antemao
- * quantos itens renderizar por "pagina".
+ * Calcula quantas colunas e linhas completas cabem no espaço disponível.
+ * Assim a página sempre renderiza somente cartas inteiras e todas as linhas
+ * usam exatamente a mesma quantidade de colunas.
  */
-export function calculateFitCount(containerWidth: number, containerHeight: number): number {
-  if (containerWidth <= 0 || containerHeight <= 0) return 0;
+export function calculateGridMetrics(
+  containerWidth: number,
+  containerHeight: number
+): SpellGridMetrics {
+  if (containerWidth <= 0 || containerHeight <= 0) {
+    return { columns: 1, rows: 1, pageSize: 1 };
+  }
 
   const columns = Math.max(
     1,
-    Math.floor((containerWidth + GRID_GAP) / (CARD_MIN_WIDTH + GRID_GAP))
+    Math.floor((containerWidth + GRID_GAP) / (CARD_TARGET_WIDTH + GRID_GAP))
   );
-  const itemWidth = (containerWidth - (columns - 1) * GRID_GAP) / columns;
-  const itemHeight = itemWidth / CARD_ASPECT_RATIO;
-  const rows = Math.max(1, Math.floor((containerHeight + GRID_GAP) / (itemHeight + GRID_GAP)));
 
-  return columns * rows;
+  const cardWidth = (containerWidth - (columns - 1) * GRID_GAP) / columns;
+  const cardHeight = cardWidth / CARD_ASPECT_RATIO;
+
+  const rows = Math.max(
+    1,
+    Math.floor((containerHeight + GRID_GAP) / (cardHeight + GRID_GAP))
+  );
+
+  return {
+    columns,
+    rows,
+    pageSize: columns * rows,
+  };
+}
+
+export function calculateFitCount(containerWidth: number, containerHeight: number): number {
+  return calculateGridMetrics(containerWidth, containerHeight).pageSize;
 }

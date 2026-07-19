@@ -1,5 +1,5 @@
-// src/pages/feiticos/components/filter-bar/index.tsx
-import { Search } from "lucide-react";
+import { useState } from "react";
+import { Filter, Search } from "lucide-react";
 import type { Spell } from "@/utils/types";
 import { buildFilterOptions, type SpellFilters } from "./functions";
 import "./style.scss";
@@ -19,8 +19,8 @@ const DROPDOWNS: { key: keyof SpellFilters; label: string }[] = [
 ];
 
 export default function FilterBar({ spells, filters, onChange }: FilterBarProps) {
+  const [open, setOpen] = useState(false);
   const options = buildFilterOptions(spells);
-
   const optionsFor = (key: keyof SpellFilters): string[] => {
     if (key === "status") return ["desbloqueado", "bloqueado"];
     return (options as Record<string, string[]>)[key] ?? [];
@@ -29,30 +29,27 @@ export default function FilterBar({ spells, filters, onChange }: FilterBarProps)
   return (
     <div className="filter-bar">
       <label className="filter-bar__search">
-        <Search size={16} />
+        <Search size={14} />
         <input
           type="text"
-          placeholder="Buscar feitiço..."
+          placeholder="search here"
           value={filters.search}
           onChange={(e) => onChange({ ...filters, search: e.target.value })}
         />
       </label>
-
-      {DROPDOWNS.map(({ key, label }) => (
-        <select
-          key={key}
-          className="filter-bar__select"
-          value={filters[key]}
-          onChange={(e) => onChange({ ...filters, [key]: e.target.value })}
-        >
-          <option value="">{label.toUpperCase()}</option>
-          {optionsFor(key).map((opt) => (
-            <option key={opt} value={opt}>
-              {opt.charAt(0).toUpperCase() + opt.slice(1)}
-            </option>
+      <button type="button" className="filter-bar__toggle" onClick={() => setOpen((v) => !v)} aria-label="Abrir filtros">
+        <Filter size={15} />
+      </button>
+      {open && (
+        <div className="filter-bar__options">
+          {DROPDOWNS.map(({ key, label }) => (
+            <select key={key} value={filters[key]} onChange={(e) => onChange({ ...filters, [key]: e.target.value })}>
+              <option value="">{label}</option>
+              {optionsFor(key).map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
           ))}
-        </select>
-      ))}
+        </div>
+      )}
     </div>
   );
 }

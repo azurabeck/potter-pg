@@ -1,37 +1,68 @@
 // src/components/sidebar/functions.ts
 import {
+  Users,
+  BarChart3,
+  Wand2,
+  FlaskConical,
+  Backpack,
+  CalendarDays,
+  Sparkles,
+  Heart,
+  Swords,
+  MapPin,
+  type LucideIcon,
+} from "lucide-react";
+import type { RouteKey } from "@/services/routes";
+
+// Icones do novo print (ainda sem mapeamento final — a ideia e trocar os
+// icones acima por estes conforme cada um for encaixado no lugar certo).
+// De cima pra baixo na imagem: pessoa, balanca, livro, calendario,
+// sparkle (ativo/Feiticos), grade, foto, chama, calendario (variante 1),
+// calendario (variante 2), compartilhar/abrir.
+import {
   User,
   Scale,
   BookOpen,
-  CalendarRange,
-  Wand2,
-  Ticket,
-  type LucideIcon,
+  Calendar,
+  Flame,
+  CalendarClock,
 } from "lucide-react";
-import { ROUTES } from "@/services/routes";
+import {
+  SparklesIcon,
+  Squares2X2Icon,
+  PhotoIcon,
+  ArrowTopRightOnSquareIcon,
+} from "@heroicons/react/24/outline";
 
+export const NEW_ICONS = {
+  pessoa: User,
+  balanca: Scale,
+  livro: BookOpen,
+  calendario: Calendar,
+  sparkle: SparklesIcon,
+  grade: Squares2X2Icon,
+  foto: PhotoIcon,
+  chama: Flame,
+  calendarioVariante1: CalendarDays,
+  calendarioVariante2: CalendarClock,
+  compartilhar: ArrowTopRightOnSquareIcon,
+};
 
-export interface SidebarItem {
-  key: string;
-  icon: LucideIcon;
-  path: string;
-  label: string;
+// Icone por item de navegacao — mesma chave/ordem de NAV_ITEMS
+// (services/routes.ts), a fonte unica das rotas/rotulos.
+export const NAV_ICONS: Record<RouteKey, LucideIcon> = {
+  PERSONAGENS: Users,
+  ATRIBUTOS: BarChart3,
+  FEITICOS: Wand2,
+  POCOES: FlaskConical,
+  INVENTARIO: Backpack,
+  SESSOES: CalendarDays,
+  MISTERIOS: Sparkles,
+  RELACOES: Heart,
+  ADVERSARIOS: Swords,
+  LOCAIS: MapPin,
+};
+
+export function isActivePath(currentPath: string, itemPath: string): boolean {
+  return currentPath.startsWith(itemPath);
 }
-
-// Barra de icones vertical, fixa, à esquerda do app inteiro (fora do
-// conteudo das paginas) — atalhos rapidos para as secoes mais usadas.
-export const SIDEBAR_ITEMS: SidebarItem[] = [
-  { key: "perfil", icon: User, path: ROUTES.PERSONAGENS, label: "Perfil" },
-  { key: "justica", icon: Scale, path: ROUTES.ADVERSARIOS, label: "Atributos" },
-  { key: "justica", icon: Scale, path: ROUTES.ADVERSARIOS, label: "Inventário" },
-  { key: "grimorio", icon: BookOpen, path: ROUTES.FEITICOS, label: "Criaturas" },
-  { key: "feiticos", icon: Wand2, path: ROUTES.FEITICOS, label: "Feitiços" },
-  { key: "feiticos", icon: Wand2, path: ROUTES.FEITICOS, label: "Poções" },
-  { key: "grimorio", icon: BookOpen, path: ROUTES.FEITICOS, label: "Adversários" },
-  { key: "justica", icon: Scale, path: ROUTES.ADVERSARIOS, label: "Npcs" },
-  { key: "agenda", icon: CalendarRange, path: ROUTES.SESSOES, label: "Sessões" },
-  { key: "grimorio", icon: BookOpen, path: ROUTES.FEITICOS, label: "Mistérios" },
-  { key: "feiticos", icon: Wand2, path: ROUTES.FEITICOS, label: "Locais" },
-  { key: "eventos", icon: Ticket, path: ROUTES.MISTERIOS, label: "Eventos" },
-  { key: "eventos", icon: Ticket, path: ROUTES.MISTERIOS, label: "Plataforma" },
-];
