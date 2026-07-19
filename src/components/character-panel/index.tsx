@@ -3,53 +3,14 @@ import { GripHorizontal, Pin, PinOff, X } from "lucide-react";
 import { CURRENT_CHARACTER_STUB } from "@/services/genene_settings";
 import { useCharacter } from "@/context/character";
 import { initials } from "@/utils";
-import { getAttributeIcon } from "./functions";
+import {
+  formatAttributeLabel,
+  getAttributeIcon,
+  progressPercent,
+  progressValue,
+  type CharacterWithProgress,
+} from "./functions";
 import "./style.scss";
-
-type NumericProgress = { atual: number; max: number };
-
-type CharacterWithProgress = {
-  hp?: NumericProgress | number;
-  xp?: NumericProgress | number;
-  nivel_geral?: number;
-};
-
-const ATTRIBUTE_LABELS: Record<string, string> = {
-  magia: "Magia",
-  ataque: "Ataque",
-  controle: "Controle",
-  defesa: "Proteção",
-  protecao: "Proteção",
-  precisão: "Precisão",
-  precisao: "Precisão",
-  agilidade: "Agilidade",
-  inteligencia: "Inteligência",
-  percepção: "Percepção",
-  percepcao: "Percepção",
-  coragem: "Coragem",
-  carisma: "Carisma",
-  resistencia: "Resistência",
-  sorte: "Sorte",
-};
-
-function progressValue(
-  value: NumericProgress | number | undefined,
-  fallback: NumericProgress,
-): NumericProgress {
-  if (typeof value === "number") return { atual: value, max: fallback.max };
-  if (value && typeof value.atual === "number" && typeof value.max === "number") return value;
-  return fallback;
-}
-
-function progressPercent(progress: NumericProgress) {
-  if (progress.max <= 0) return 0;
-  return Math.max(0, Math.min(100, (progress.atual / progress.max) * 100));
-}
-
-function formatAttributeLabel(key: string) {
-  const normalized = key.toLocaleLowerCase("pt-BR");
-  return ATTRIBUTE_LABELS[normalized] ?? key.charAt(0).toUpperCase() + key.slice(1);
-}
 
 export default function CharacterPanel() {
   const { activeCharacter, characters, selectCharacter } = useCharacter();

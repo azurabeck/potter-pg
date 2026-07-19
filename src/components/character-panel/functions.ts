@@ -19,15 +19,54 @@ import {
   HeartPulse,
   Clover,
   Sparkles,
-  FlaskConical,
-  Gem,
-  Package,
   type LucideIcon,
 } from "lucide-react";
 
-export function percent(current: number, max: number): number {
-  if (max <= 0) return 0;
-  return Math.min(100, Math.max(0, (current / max) * 100));
+export type NumericProgress = { atual: number; max: number };
+
+export type CharacterWithProgress = {
+  hp?: NumericProgress | number;
+  xp?: NumericProgress | number;
+  nivel_geral?: number;
+};
+
+const ATTRIBUTE_LABELS: Record<string, string> = {
+  magia: "Magia",
+  ataque: "Ataque",
+  controle: "Controle",
+  defesa: "Proteção",
+  protecao: "Proteção",
+  precisão: "Precisão",
+  precisao: "Precisão",
+  agilidade: "Agilidade",
+  inteligencia: "Inteligência",
+  percepção: "Percepção",
+  percepcao: "Percepção",
+  coragem: "Coragem",
+  carisma: "Carisma",
+  resistencia: "Resistência",
+  sorte: "Sorte",
+};
+
+/** Resolve `hp`/`xp` do personagem (numero solto ou {atual,max}) contra um fallback. */
+export function progressValue(
+  value: NumericProgress | number | undefined,
+  fallback: NumericProgress
+): NumericProgress {
+  if (typeof value === "number") return { atual: value, max: fallback.max };
+  if (value && typeof value.atual === "number" && typeof value.max === "number") return value;
+  return fallback;
+}
+
+export function progressPercent(progress: NumericProgress): number {
+  if (progress.max <= 0) return 0;
+  return Math.max(0, Math.min(100, (progress.atual / progress.max) * 100));
+}
+
+/** "magia" -> "Magia", "defesa"/"protecao" -> "Proteção" (chaves reais variam). */
+export function formatAttributeLabel(key: string): string {
+  const normalized = key.toLocaleLowerCase("pt-BR");
+  return ATTRIBUTE_LABELS[normalized] ?? key.charAt(0).toUpperCase() + key.slice(1);
 }
 
 // Icone por nome de atributo, cobrindo os atributos vistos nos personagens
@@ -56,15 +95,4 @@ const ATTRIBUTE_ICONS: Record<string, LucideIcon> = {
 
 export function getAttributeIcon(name: string): LucideIcon {
   return ATTRIBUTE_ICONS[name] ?? Sparkles;
-}
-
-// Icone por categoria de item do inventario (Character.inventario.itens).
-const INVENTORY_CATEGORY_ICONS: Record<string, LucideIcon> = {
-  "Objetos Mágicos": Wand2,
-  Consumíveis: FlaskConical,
-  Mistérios: Gem,
-};
-
-export function inventoryItemIcon(categoria: string): LucideIcon {
-  return INVENTORY_CATEGORY_ICONS[categoria] ?? Package;
 }

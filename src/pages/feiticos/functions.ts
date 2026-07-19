@@ -64,7 +64,3 @@ export function calculateGridMetrics(
     pageSize: columns * rows,
   };
 }
-
-export function calculateFitCount(containerWidth: number, containerHeight: number): number {
-  return calculateGridMetrics(containerWidth, containerHeight).pageSize;
-}
