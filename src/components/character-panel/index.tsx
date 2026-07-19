@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from "react";
+import { GripHorizontal, Pin, PinOff, X } from "lucide-react";
 import { CURRENT_CHARACTER_STUB } from "@/services/genene_settings";
 import { useCharacter } from "@/context/character";
 import { initials } from "@/utils";
@@ -51,6 +53,64 @@ function formatAttributeLabel(key: string) {
 
 export default function CharacterPanel() {
   const { activeCharacter, characters, selectCharacter } = useCharacter();
+  const [attributesOpen, setAttributesOpen] = useState(false);
+  const [attributesPinned, setAttributesPinned] = useState(false);
+  const [panelPosition, setPanelPosition] = useState({ x: 0, y: 0 });
+  const dragOffsetRef = useRef({ x: 0, y: 0 });
+  const draggingRef = useRef(false);
+
+  useEffect(() => {
+    function handlePointerMove(event: PointerEvent) {
+      if (!draggingRef.current || !attributesPinned) return;
+
+      const panelWidth = 300;
+      const panelHeight = 360;
+      const maxX = Math.max(8, window.innerWidth - panelWidth - 8);
+      const maxY = Math.max(8, window.innerHeight - panelHeight - 8);
+
+      setPanelPosition({
+        x: Math.min(maxX, Math.max(8, event.clientX - dragOffsetRef.current.x)),
+        y: Math.min(maxY, Math.max(8, event.clientY - dragOffsetRef.current.y)),
+      });
+    }
+
+    function stopDragging() {
+      draggingRef.current = false;
+      document.body.classList.remove("is-dragging-attributes-panel");
+    }
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", stopDragging);
+    window.addEventListener("pointercancel", stopDragging);
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", stopDragging);
+      window.removeEventListener("pointercancel", stopDragging);
+      document.body.classList.remove("is-dragging-attributes-panel");
+    };
+  }, [attributesPinned]);
+
+  function togglePinned() {
+    if (!attributesPinned) {
+      setPanelPosition({
+        x: Math.max(12, window.innerWidth - 330),
+        y: Math.max(12, Math.min(window.innerHeight - 390, 110)),
+      });
+    }
+    setAttributesPinned((current) => !current);
+  }
+
+  function startDragging(event: React.PointerEvent<HTMLDivElement>) {
+    if (!attributesPinned || (event.target as HTMLElement).closest("button")) return;
+    draggingRef.current = true;
+    dragOffsetRef.current = {
+      x: event.clientX - panelPosition.x,
+      y: event.clientY - panelPosition.y,
+    };
+    document.body.classList.add("is-dragging-attributes-panel");
+    event.preventDefault();
+  }
   const name = activeCharacter?.name ?? CURRENT_CHARACTER_STUB.nome;
   const characterProgress = activeCharacter as (typeof activeCharacter & CharacterWithProgress);
   const hp = progressValue(characterProgress?.hp, CURRENT_CHARACTER_STUB.hp);
@@ -171,35 +231,70 @@ export default function CharacterPanel() {
           <button
             className="character-panel__see-all"
             type="button"
-            aria-describedby="character-attributes-tooltip"
+            aria-expanded={attributesOpen}
+            aria-controls="character-attributes-panel"
+            onClick={() => setAttributesOpen((current) => !current)}
           >
             ver todos os atributos
           </button>
 
-          <div
-            className="character-panel__attributes-tooltip"
-            id="character-attributes-tooltip"
-            role="tooltip"
-          >
-            <div className="character-panel__tooltip-heading">
-              <strong>Atributos</strong>
-              <span>Nível {level}</span>
-            </div>
-            <div className="character-panel__tooltip-grid">
-              {allAttributes.map(([key, value]) => {
-                const label = formatAttributeLabel(key);
-                const AttributeIcon = getAttributeIcon(label);
-
-                return (
-                  <div className="character-panel__tooltip-attribute" key={key}>
-                    <AttributeIcon size={13} strokeWidth={1.7} aria-hidden="true" />
-                    <span>{label}</span>
-                    <strong>{value}</strong>
+          {attributesOpen && (
+            <div
+              className={`character-panel__attributes-popover${attributesPinned ? " character-panel__attributes-popover--pinned" : ""}`}
+              id="character-attributes-panel"
+              role="dialog"
+              aria-modal="false"
+              aria-label="Todos os atributos do personagem"
+              style={attributesPinned ? { left: panelPosition.x, top: panelPosition.y } : undefined}
+            >
+              <div
+                className="character-panel__popover-header"
+                onPointerDown={startDragging}
+              >
+                <div className="character-panel__popover-title">
+                  {attributesPinned && <GripHorizontal size={14} strokeWidth={1.7} aria-hidden="true" />}
+                  <div>
+                    <strong>Atributos</strong>
+                    <span>Nível {level}</span>
                   </div>
-                );
-              })}
+                </div>
+
+                <div className="character-panel__popover-actions">
+                  <button
+                    type="button"
+                    onClick={togglePinned}
+                    aria-label={attributesPinned ? "Desafixar painel" : "Fixar painel na tela"}
+                    title={attributesPinned ? "Desafixar" : "Fixar e permitir arrastar"}
+                  >
+                    {attributesPinned ? <PinOff size={13} /> : <Pin size={13} />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAttributesOpen(false)}
+                    aria-label="Fechar atributos"
+                    title="Fechar"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="character-panel__popover-grid">
+                {allAttributes.map(([key, value]) => {
+                  const label = formatAttributeLabel(key);
+                  const AttributeIcon = getAttributeIcon(label);
+
+                  return (
+                    <div className="character-panel__popover-attribute" key={key}>
+                      <AttributeIcon size={13} strokeWidth={1.7} aria-hidden="true" />
+                      <span>{label}</span>
+                      <strong>{value}</strong>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </section>
     </aside>

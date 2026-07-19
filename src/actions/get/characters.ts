@@ -20,3 +20,14 @@ export async function getPlayerCharacters(userId: string): Promise<Character[]> 
 
   return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Character);
 }
+
+/** Busca todos os personagens do tipo NPC para selecao da IA na plataforma. */
+export async function getNpcCharacters(): Promise<Character[]> {
+  const charactersRef = collection(db, COLLECTIONS.CHARACTERS);
+  const q = query(charactersRef, where("character_type", "==", "npc"));
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs
+    .map((doc) => ({ id: doc.id, ...doc.data() }) as Character)
+    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+}

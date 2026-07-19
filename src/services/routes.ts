@@ -4,6 +4,7 @@
 
 import type { ComponentType } from "react";
 import Feiticos from "@/pages/feiticos";
+import Plataforma from "@/pages/plataforma";
 
 export const ROUTES = {
   PERSONAGENS: "/personagens",
@@ -16,6 +17,7 @@ export const ROUTES = {
   RELACOES: "/relacoes",
   ADVERSARIOS: "/adversarios",
   LOCAIS: "/locais",
+  PLATAFORMA: "/plataforma",
 } as const;
 
 export type RouteKey = keyof typeof ROUTES;
@@ -40,4 +42,5 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "RELACOES", label: "Relações", path: ROUTES.RELACOES },
   { key: "ADVERSARIOS", label: "Adversários", path: ROUTES.ADVERSARIOS },
   { key: "LOCAIS", label: "Locais", path: ROUTES.LOCAIS },
+  { key: "PLATAFORMA", label: "Plataforma", path: ROUTES.PLATAFORMA, element: Plataforma },
 ];

@@ -10,6 +10,7 @@ import {
   Heart,
   Swords,
   MapPin,
+  Dices,
   type LucideIcon,
 } from "lucide-react";
 import type { RouteKey } from "@/services/routes";
@@ -61,6 +62,7 @@ export const NAV_ICONS: Record<RouteKey, LucideIcon> = {
   RELACOES: Heart,
   ADVERSARIOS: Swords,
   LOCAIS: MapPin,
+  PLATAFORMA: Dices,
 };
 
 export function isActivePath(currentPath: string, itemPath: string): boolean {

@@ -38,7 +38,6 @@ export default function Sidebar() {
             {label}
           </Link>
         ))}
-        <Link className="sidebar__item" to="/plataforma">Plataforma</Link>
       </nav>
 
       <button className="sidebar__logout" onClick={() => logout()}>Sair</button>
