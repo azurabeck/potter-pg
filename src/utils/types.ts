@@ -121,6 +121,38 @@ export interface CharacterVarinha {
   miolo: string;
 }
 
+// Configuracao de narracao por IA da sessao (colecao "settings", um
+// documento por usuario, id do documento == uid — ver actions/get|sets/settings.ts).
+export interface AiPrompts {
+  narration: string;
+  battle: string;
+  duel: string;
+  quidditch: string;
+  closing: string;
+}
+
+export const EMPTY_AI_PROMPTS: AiPrompts = {
+  narration: "",
+  battle: "",
+  duel: "",
+  quidditch: "",
+  closing: "",
+};
+
+// Qual provedor de IA narra e o token do proprio usuario pra chamar a API
+// dele direto do navegador (mesmo documento "settings" dos prompts).
+export type AiProvider = "anthropic" | "openai" | "gemini";
+
+export interface AiProviderConfig {
+  provider: AiProvider;
+  apiKey: string;
+}
+
+export const EMPTY_AI_PROVIDER_CONFIG: AiProviderConfig = {
+  provider: "anthropic",
+  apiKey: "",
+};
+
 // Personagem vindo da colecao "characters" do Firestore. Contempla tanto
 // personagens de jogador ("player", buscados por getPlayerCharacters)
 // quanto NPCs ("npc", buscados por getNpcCharacters — ver actions/get/characters.ts).
@@ -135,6 +167,7 @@ export interface Character {
   nascimento?: string;
   image_url?: string;
   image_url_ano_1?: string;
+  hp?: number;
   atributos: Record<string, number>;
   dinheiro: CharacterMoney;
   habilidades: Record<string, CharacterHabilidade>;
@@ -146,3 +179,35 @@ export interface Character {
   campaign_ids: string[];
   mystery_ids: string[];
 }
+
+// Um evento/cena dentro de um documento da colecao "campaigns" — o campo
+// `characters` guarda nomes (nao ids), como aparece no Firestore.
+export interface CampaignSessionEvent {
+  characters: string[];
+  date: string;
+  event: string;
+  local: string;
+  order: number;
+}
+
+// Documento da colecao "campaigns": um bloco de campanha (ex: "Campanha 22
+// - O Reflexo Dourado") pertencente a um personagem (`character_id`),
+// contendo varios eventos em `sessions`. Um personagem referencia varios
+// desses documentos em `campaign_ids` — ver actions/get/campaigns.ts.
+export interface Campaign {
+  id: string;
+  campaign_name: string;
+  campaign_year: number;
+  character_id: string;
+  order: number;
+  sessions: CampaignSessionEvent[];
+  year: number;
+}
+
+// Uma fala do feed de narração (jogador ou "Narrador"). Também é a forma
+// salva na colecao "narration_sessions" — ver actions/get|sets/narration-session.ts.
+export type NarrationMessage = {
+  id: string;
+  user: string;
+  text: string;
+};

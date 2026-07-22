@@ -6,6 +6,9 @@
 export const COLLECTIONS = {
   SPELLS: "spells",
   CHARACTERS: "characters",
+  SETTINGS: "settings",
+  CAMPAIGNS: "campaigns",
+  NARRATION_SESSIONS: "narration_sessions",
 } as const;
 
 export const APP_NAME = "POTTER-PG";

@@ -1,3 +1,7 @@
+import type { AiPrompts, NarrationMessage } from "@/utils/types";
+
+export type { NarrationMessage };
+
 export type Die = {
   sides: 4 | 6 | 8 | 10 | 12 | 20;
 };
@@ -12,11 +16,10 @@ export type HistoryItem =
   | { id: string; type: "dice"; user: string; sides: Die["sides"]; result: number }
   | { id: string; type: "join"; user: string };
 
-export type NarrationMessage = {
-  id: string;
-  user: string;
-  text: string;
-};
+/** Sem nenhuma regra escrita em nenhum dos 4 campos. */
+export function isAiPromptsEmpty(prompts: AiPrompts): boolean {
+  return Object.values(prompts).every((value) => value.trim() === "");
+}
 
 export type ScoreboardRow = {
   name: string;

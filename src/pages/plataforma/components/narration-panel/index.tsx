@@ -38,7 +38,9 @@ export default function NarrationPanel({ messages }: NarrationPanelProps) {
         {messages.length === 0 ? (
           <div className="platform-page__empty-state">
             <Sparkles size={22} aria-hidden="true" />
-            <p>A narração é exibida aqui, seja controlada pela IA ou por um narrador humano.</p>
+            <p>
+              Aperte <strong>Iniciar</strong> no topo da página pra começar a sessão.
+            </p>
           </div>
         ) : (
           <div className="platform-page__narration-feed">

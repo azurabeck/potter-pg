@@ -1,14 +1,39 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { Bot, Dices, ScrollText, Sparkles, Sword, Trophy, UserPlus, X, Settings } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  Bot,
+  Dices,
+  DoorClosed,
+  Eye,
+  EyeOff,
+  KeyRound,
+  ScrollText,
+  Sparkles,
+  Sword,
+  Trophy,
+  UserPlus,
+  X,
+  Settings,
+} from "lucide-react";
+import { useAuth } from "@/context/auth";
 import { getNpcCharacters } from "@/actions/get/characters";
-import type { Character } from "@/utils/types";
+import { getAiPrompts, getAiProviderConfig } from "@/actions/get/settings";
+import { saveAiPrompts, saveAiProviderConfig } from "@/actions/sets/settings";
+import { EMPTY_AI_PROMPTS, EMPTY_AI_PROVIDER_CONFIG, type AiProvider, type Character } from "@/utils/types";
+import { isAiPromptsEmpty } from "../../functions";
 import type { HistoryItem } from "../../functions";
 import "./style.scss";
+
+const AI_PROVIDER_LABEL: Record<AiProvider, string> = {
+  anthropic: "Anthropic (Claude)",
+  openai: "OpenAI (GPT)",
+  gemini: "Google (Gemini)",
+};
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddPlayer: (item: HistoryItem) => void;
+  onRequireSetup: () => void;
 }
 
 /**
@@ -18,19 +43,43 @@ interface SettingsModalProps {
  * fechar e um abrir de novo, exatamente como acontecia quando isso era
  * só um bloco de JSX condicional dentro do componente da página.
  */
-export default function SettingsModal({ isOpen, onClose, onAddPlayer }: SettingsModalProps) {
+export default function SettingsModal({ isOpen, onClose, onAddPlayer, onRequireSetup }: SettingsModalProps) {
+  const { user } = useAuth();
   const [narratorMode, setNarratorMode] = useState<"ai" | "human">("ai");
   const [aiPlays, setAiPlays] = useState(false);
   const [selectedAiCharacter, setSelectedAiCharacter] = useState("");
   const [npcCharacters, setNpcCharacters] = useState<Character[]>([]);
   const [playerInput, setPlayerInput] = useState("");
   const [players, setPlayers] = useState<string[]>([]);
-  const [aiPrompts, setAiPrompts] = useState({
-    narration: "",
-    battle: "",
-    duel: "",
-    quidditch: "",
-  });
+  const [aiPrompts, setAiPrompts] = useState(EMPTY_AI_PROMPTS);
+  const [aiProviderConfig, setAiProviderConfig] = useState(EMPTY_AI_PROVIDER_CONFIG);
+  const [tokenVisible, setTokenVisible] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const checkedInitialPrompts = useRef(false);
+
+  // Carrega os prompts e o provedor/token salvos (colecao "settings", 1
+  // documento por usuario) assim que a Plataforma monta — este componente
+  // nunca desmonta, entao roda uma vez so por sessao de login. Sem regra
+  // escrita ou sem token, pede pro usuario configurar (uma vez so, por
+  // isso o ref em vez de estado).
+  useEffect(() => {
+    if (!user) return;
+
+    let cancelled = false;
+    Promise.all([getAiPrompts(user.uid), getAiProviderConfig(user.uid)]).then(([prompts, providerConfig]) => {
+      if (cancelled) return;
+      setAiPrompts(prompts);
+      setAiProviderConfig(providerConfig);
+      if (!checkedInitialPrompts.current) {
+        checkedInitialPrompts.current = true;
+        if (isAiPromptsEmpty(prompts) || !providerConfig.apiKey) onRequireSetup();
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, onRequireSetup]);
 
   useEffect(() => {
     if (!isOpen || narratorMode !== "human" || !aiPlays) return;
@@ -57,6 +106,26 @@ export default function SettingsModal({ isOpen, onClose, onAddPlayer }: Settings
     setPlayers((current) => [...current, name]);
     onAddPlayer({ id: crypto.randomUUID(), type: "join", user: name });
     setPlayerInput("");
+  }
+
+  async function saveAndClose() {
+    if (!user) {
+      onClose();
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await Promise.all([
+        saveAiPrompts(user.uid, aiPrompts),
+        saveAiProviderConfig(user.uid, aiProviderConfig),
+      ]);
+      onClose();
+    } catch (error) {
+      console.error("Erro ao salvar configurações:", error);
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (!isOpen) return null;
@@ -163,6 +232,64 @@ export default function SettingsModal({ isOpen, onClose, onAddPlayer }: Settings
           {narratorMode === "ai" && (
             <section className="platform-settings__section">
               <div className="platform-settings__section-title">
+                <KeyRound size={16} />
+                <div>
+                  <strong>IA da narração</strong>
+                  <span>Qual provedor narra e o token da sua conta nele.</span>
+                </div>
+              </div>
+
+              <label className="platform-settings__field">
+                <span>Provedor</span>
+                <select
+                  value={aiProviderConfig.provider}
+                  onChange={(event) =>
+                    setAiProviderConfig((current) => ({
+                      ...current,
+                      provider: event.target.value as AiProvider,
+                    }))
+                  }
+                >
+                  {Object.entries(AI_PROVIDER_LABEL).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="platform-settings__field platform-settings__field--token">
+                <span>Token de API</span>
+                <div className="platform-settings__token-input">
+                  <input
+                    type={tokenVisible ? "text" : "password"}
+                    value={aiProviderConfig.apiKey}
+                    onChange={(event) =>
+                      setAiProviderConfig((current) => ({ ...current, apiKey: event.target.value }))
+                    }
+                    placeholder="Cole aqui o token da sua conta"
+                    autoComplete="off"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setTokenVisible((current) => !current)}
+                    aria-label={tokenVisible ? "Esconder token" : "Mostrar token"}
+                  >
+                    {tokenVisible ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+                <small>
+                  Chamado direto do seu navegador com o seu token — nunca passa pelos nossos
+                  servidores, mas também fica visível pra quem tiver acesso a este navegador
+                  logado.
+                </small>
+              </label>
+            </section>
+          )}
+
+          {narratorMode === "ai" && (
+            <section className="platform-settings__section">
+              <div className="platform-settings__section-title">
                 <ScrollText size={16} />
                 <div>
                   <strong>Prompts da IA</strong>
@@ -218,6 +345,18 @@ export default function SettingsModal({ isOpen, onClose, onAddPlayer }: Settings
                     placeholder="Escreva a regra de quadribol..."
                   />
                 </label>
+                <label className="platform-settings__field platform-settings__field--textarea">
+                  <span>
+                    <DoorClosed size={14} /> Regra de Encerramento
+                  </span>
+                  <textarea
+                    value={aiPrompts.closing}
+                    onChange={(event) =>
+                      setAiPrompts((current) => ({ ...current, closing: event.target.value }))
+                    }
+                    placeholder="Escreva a regra de encerramento..."
+                  />
+                </label>
               </div>
             </section>
           )}
@@ -254,8 +393,13 @@ export default function SettingsModal({ isOpen, onClose, onAddPlayer }: Settings
         </div>
 
         <div className="platform-modal__footer platform-settings__footer">
-          <button type="button" className="platform-modal__primary" onClick={onClose}>
-            Salvar configurações
+          <button
+            type="button"
+            className="platform-modal__primary"
+            onClick={saveAndClose}
+            disabled={saving}
+          >
+            {saving ? "Salvando..." : "Salvar configurações"}
           </button>
         </div>
       </div>

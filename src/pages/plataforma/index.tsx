@@ -1,6 +1,12 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { ImagePlus, PanelTop, Send, Settings } from "lucide-react";
+import { ImagePlus, Loader2, PanelTop, Play, Send, Settings, Square } from "lucide-react";
+import { useAuth } from "@/context/auth";
 import { useCharacter } from "@/context/character";
+import { getAiPrompts, getAiProviderConfig } from "@/actions/get/settings";
+import { getNarrationSession } from "@/actions/get/narration-session";
+import { clearNarrationSession, saveNarrationSession } from "@/actions/sets/narration-session";
+import { narrate, type NarrateMessage } from "@/actions/ai/narrate";
+import { buildCampaignContext } from "@/actions/ai/context";
 import ScoreboardPanel from "./components/scoreboard";
 import TurnOrder from "./components/turn-order";
 import NarrationPanel from "./components/narration-panel";
@@ -14,10 +20,12 @@ import type { Die, HistoryItem, NarrationMessage, RolledDie } from "./functions"
 import "./style.scss";
 
 export default function Plataforma() {
+  const { user } = useAuth();
   const { activeCharacter } = useCharacter();
   const playerName = activeCharacter?.name?.trim() || "Tomas Black";
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [narrating, setNarrating] = useState(false);
   const [rolledDie, setRolledDie] = useState<RolledDie | null>(null);
   const [isImageFormOpen, setIsImageFormOpen] = useState(false);
   const [imageUrlInput, setImageUrlInput] = useState("");
@@ -30,6 +38,25 @@ export default function Plataforma() {
   const [isScoreboardPinned, setIsScoreboardPinned] = useState(false);
   const [scoreboardPosition, setScoreboardPosition] = useState({ x: 0, y: 0 });
   const scoreboardDragRef = useRef<{ offsetX: number; offsetY: number } | null>(null);
+
+  // Retoma a sessão salva do personagem ativo (fica no Firestore por
+  // personagem, não por navegador — funciona ao trocar de aparelho).
+  useEffect(() => {
+    if (!activeCharacter) return;
+
+    let cancelled = false;
+    getNarrationSession(activeCharacter.id)
+      .then((messages) => {
+        if (!cancelled && messages.length > 0) setNarrationMessages(messages);
+      })
+      .catch((error) => {
+        console.error("Erro ao retomar a sessão salva:", error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeCharacter?.id]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -103,16 +130,127 @@ export default function Plataforma() {
     ]);
   }
 
+  const sessionActive = narrationMessages.length > 0;
+
   function submitResponse(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (narrating || !sessionActive) return;
     const text = responseText.trim();
     if (!text) return;
 
-    setNarrationMessages((current) => [
-      ...current,
-      { id: crypto.randomUUID(), user: playerName, text },
-    ]);
+    const playerMessage: NarrationMessage = { id: crypto.randomUUID(), user: playerName, text };
+    setNarrationMessages((current) => [...current, playerMessage]);
     setResponseText("");
+
+    continueNarration([...narrationMessages, playerMessage]);
+  }
+
+  function playSession() {
+    if (narrating || sessionActive) return;
+    startSession();
+  }
+
+  function stopSession() {
+    if (narrating || !sessionActive) return;
+    setNarrationMessages([]);
+    if (activeCharacter) {
+      clearNarrationSession(activeCharacter.id).catch((error) => {
+        console.error("Erro ao encerrar a sessão:", error);
+      });
+    }
+  }
+
+  function addNarratorMessage(text: string) {
+    setNarrationMessages((current) => [...current, { id: crypto.randomUUID(), user: "Narrador", text }]);
+  }
+
+  // Busca o prompt/token de IA e chama narrate() — usado tanto pra abrir a
+  // sessão quanto pra continuar a narração a cada mensagem do jogador.
+  // `historySoFar` é o feed visível *antes* dessa resposta (sem a fala do
+  // Narrador que vai ser gerada agora) — serve só pra montar o que vai ser
+  // salvo em `narration_sessions` quando a IA terminar; `apiMessages` é o
+  // que de fato vai pro provedor de IA.
+  async function callAi(historySoFar: NarrationMessage[], apiMessages: NarrateMessage[]) {
+    if (!user) return;
+
+    setNarrating(true);
+    try {
+      const [prompts, providerConfig] = await Promise.all([
+        getAiPrompts(user.uid),
+        getAiProviderConfig(user.uid),
+      ]);
+
+      if (!providerConfig.apiKey) {
+        addNarratorMessage(
+          "Nenhum token de IA configurado ainda. Abra Configurações, escolha o provedor e cole o token pra narrar."
+        );
+        setIsSettingsOpen(true);
+        return;
+      }
+
+      const campaignContext = activeCharacter ? await buildCampaignContext(activeCharacter) : "";
+      const systemPrompt = [
+        prompts.narration || "Você é o narrador de uma sessão de RPG ambientada no universo de Harry Potter.",
+        campaignContext,
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+
+      const narratorMessageId = crypto.randomUUID();
+      let hasReceivedText = false;
+      let fullText = "";
+
+      await narrate({ systemPrompt, messages: apiMessages }, (chunk) => {
+        fullText += chunk;
+        if (!hasReceivedText) {
+          hasReceivedText = true;
+          setNarrationMessages((current) => [
+            ...current,
+            { id: narratorMessageId, user: "Narrador", text: chunk },
+          ]);
+        } else {
+          setNarrationMessages((current) =>
+            current.map((message) =>
+              message.id === narratorMessageId ? { ...message, text: message.text + chunk } : message
+            )
+          );
+        }
+      });
+
+      if (!hasReceivedText) {
+        addNarratorMessage("A IA respondeu vazio.");
+      } else if (activeCharacter) {
+        // Pausa o jogo: salva o feed no Firestore assim que a IA termina de
+        // responder, pra dar pra retomar a sessão de qualquer aparelho.
+        const narratorMessage: NarrationMessage = { id: narratorMessageId, user: "Narrador", text: fullText };
+        saveNarrationSession(activeCharacter.id, [...historySoFar, narratorMessage]).catch((error) => {
+          console.error("Erro ao salvar a sessão:", error);
+        });
+      }
+    } catch (error) {
+      addNarratorMessage(`A IA não conseguiu responder: ${(error as Error).message}`);
+    } finally {
+      setNarrating(false);
+    }
+  }
+
+  function startSession() {
+    return callAi([], [
+      { role: "user", content: `Inicie a sessão para ${playerName} com uma cena de abertura envolvente.` },
+    ]);
+  }
+
+  // Manda o histórico inteiro da conversa a cada rodada, mapeando "Narrador"
+  // pro papel assistant e todo o resto pro papel user — em sessões muito
+  // longas isso cresce o custo/tamanho da chamada; não há corte por enquanto.
+  function continueNarration(messagesSoFar: NarrationMessage[]) {
+    return callAi(
+      messagesSoFar,
+      messagesSoFar.map((message) => ({
+        role: message.user === "Narrador" ? "assistant" : "user",
+        content: message.text,
+      }))
+    );
   }
 
   function openImageForm() {
@@ -151,15 +289,40 @@ export default function Plataforma() {
     <section className="platform-page">
       <header className="platform-page__header">
         <h1>Plataforma</h1>
-        <button
-          type="button"
-          className="platform-page__settings-button"
-          aria-label="Abrir configurações da plataforma"
-          title="Configurações"
-          onClick={() => setIsSettingsOpen(true)}
-        >
-          <Settings size={19} />
-        </button>
+        <div className="platform-page__header-actions">
+          {sessionActive ? (
+            <button
+              type="button"
+              className="platform-page__session-button platform-page__session-button--stop"
+              aria-label="Encerrar sessão"
+              title="Encerrar sessão"
+              onClick={stopSession}
+              disabled={narrating}
+            >
+              <Square size={16} /> Encerrar
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="platform-page__session-button platform-page__session-button--play"
+              aria-label="Iniciar sessão"
+              title="Iniciar sessão"
+              onClick={playSession}
+              disabled={narrating}
+            >
+              <Play size={16} /> Iniciar
+            </button>
+          )}
+          <button
+            type="button"
+            className="platform-page__settings-button"
+            aria-label="Abrir configurações da plataforma"
+            title="Configurações"
+            onClick={() => setIsSettingsOpen(true)}
+          >
+            <Settings size={19} />
+          </button>
+        </div>
       </header>
 
       <div className="platform-page__workspace">
@@ -179,11 +342,22 @@ export default function Plataforma() {
                   event.currentTarget.form?.requestSubmit();
                 }
               }}
-              placeholder="Escreva sua ação ou narração..."
+              placeholder={
+                !sessionActive
+                  ? "Aperte iniciar pra começar a sessão..."
+                  : narrating
+                    ? "O narrador está escrevendo..."
+                    : "Escreva sua ação ou narração..."
+              }
               aria-label="Mensagem da rodada"
+              disabled={narrating || !sessionActive}
             />
-            <button type="submit" disabled={!responseText.trim()} aria-label="Enviar mensagem">
-              <Send size={16} />
+            <button
+              type="submit"
+              disabled={!responseText.trim() || narrating || !sessionActive}
+              aria-label="Enviar mensagem"
+            >
+              {narrating ? <Loader2 size={16} className="platform-page__spinner" /> : <Send size={16} />}
               <span>Entrar</span>
             </button>
           </form>
@@ -232,6 +406,7 @@ export default function Plataforma() {
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         onAddPlayer={(item) => setHistory((current) => [...current, item])}
+        onRequireSetup={() => setIsSettingsOpen(true)}
       />
 
       <ImageShareModal
