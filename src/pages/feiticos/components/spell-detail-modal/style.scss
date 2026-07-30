@@ -7,17 +7,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 30px;
   z-index: 100;
 
   &__panel {
     display: flex;
     width: 100%;
-    max-width: 960px;
-    height: min(78vh, 640px);
+    max-width: 1200px;
+    height: min(78vh, 800px);
     background: $color-parchment;
     color: $color-text-panel;
-    border-radius: 12px;
+    border-radius: 15px;
     border: 1px solid $color-border-gold-strong;
     box-shadow: $shadow-panel;
     overflow: hidden;
@@ -25,7 +25,7 @@
 
   &__image-wrap {
     position: relative;
-    width: 42%;
+    width: 32%;
     height: 100%;
     flex-shrink: 0;
     background: $color-bg-app;
@@ -56,17 +56,17 @@
     position: relative;
     flex: 1;
     min-width: 0;
-    padding: 28px;
+    padding: 35px;
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 17.5px;
     overflow-y: auto;
   }
 
   &__close {
     position: absolute;
-    top: 14px;
-    right: 14px;
+    top: 17.5px;
+    right: 17.5px;
     background: none;
     border: none;
     color: $color-text-panel;
@@ -82,30 +82,30 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    padding-right: 28px;
+    gap: 15px;
+    padding-right: 35px;
   }
 
   &__title {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     color: $color-red;
 
     h2 {
       font-family: $font-display;
-      font-size: 18px;
+      font-size: 22.5px;
       letter-spacing: 0.02em;
       text-transform: uppercase;
     }
   }
 
   &__badge {
-    font-size: 11px;
+    font-size: 13.75px;
     font-weight: 500;
     text-transform: uppercase;
-    padding: 4px 10px;
-    border-radius: 999px;
+    padding: 5px 12.5px;
+    border-radius: 1248.75px;
     color: #fff;
     white-space: nowrap;
 
@@ -133,9 +133,9 @@
   &__meta {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 17.5px;
     flex-wrap: wrap;
-    font-size: 12px;
+    font-size: 15px;
     color: $color-text-panel;
   }
 
@@ -144,25 +144,25 @@
     flex-direction: column;
     align-items: center;
     line-height: 1;
-    font-size: 9px;
+    font-size: 11.25px;
     color: $color-red;
     font-weight: 500;
   }
 
   &__ano-number {
-    font-size: 16px;
+    font-size: 20px;
     font-family: $font-display;
   }
 
   &__meta-item {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 5px;
     opacity: 0.75;
   }
 
   &__description {
-    font-size: 13px;
+    font-size: 16.25px;
     line-height: 1.5;
     margin: 0;
     color: rgba(247, 245, 255, 0.78);
@@ -172,29 +172,94 @@
     }
   }
 
+  &__section {
+    border-top: 1px solid rgba(151, 140, 222, 0.16);
+    padding-top: 17.5px;
+
+    h3 {
+      margin: 0 0 10px;
+      color: $color-gold-bright;
+      font-size: 13.75px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+  }
+
+  &__mastery-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 10px;
+  }
+
+  &__mastery-item {
+    padding: 12.5px 15px;
+    border-left: 2px solid rgba(151, 140, 222, 0.3);
+    background: rgba(0, 0, 0, 0.12);
+    font-size: 15px;
+    color: rgba(247, 245, 255, 0.78);
+
+    p {
+      margin: 5px 0 0;
+    }
+
+    &--current {
+      border-left-color: $color-border-gold-strong;
+      background: rgba(151, 220, 255, 0.08);
+    }
+  }
+
+  &__mastery-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12.5px;
+    color: $color-gold-bright;
+    font-weight: 500;
+  }
+
+  &__mastery-current-tag {
+    padding: 2.5px 10px;
+    border-radius: 999px;
+    background: $color-border-gold-strong;
+    color: #0a0618;
+    font-size: 11.25px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  &__mastery-value {
+    color: rgba(247, 245, 255, 0.55);
+    font-style: italic;
+    font-size: 13.75px;
+  }
+
   &__footer {
     margin-top: auto;
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 25px;
     border-top: 1px solid rgba(151, 140, 222, 0.16);
-    padding-top: 14px;
+    padding-top: 17.5px;
   }
 
   &__stat {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 2.5px;
 
     span {
-      font-size: 10px;
+      font-size: 12.5px;
       letter-spacing: 0.04em;
       opacity: 0.6;
     }
 
     strong {
       font-family: $font-display;
-      font-size: 15px;
+      font-size: 18.75px;
     }
   }
 
@@ -204,11 +269,11 @@
   }
 
   @media (max-width: 640px) {
-    padding: 12px;
+    padding: 15px;
 
     &__panel {
       flex-direction: column;
-      height: min(88vh, 680px);
+      height: min(88vh, 850px);
     }
 
     &__image-wrap {
@@ -217,7 +282,7 @@
     }
 
     &__content {
-      padding: 20px;
+      padding: 25px;
     }
   }
 }

@@ -2,10 +2,10 @@
 
 .sr-only {
   position: absolute;
-  width: 1px;
-  height: 1px;
+  width: 1.25px;
+  height: 1.25px;
   padding: 0;
-  margin: -1px;
+  margin: -1.25px;
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
@@ -13,39 +13,39 @@
 }
 
 .platform-settings {
-  width: min(760px, 96vw);
-  max-height: min(820px, 92vh);
-  padding: 26px 28px 0;
+  width: min(950px, 96vw);
+  max-height: min(1025px, 92vh);
+  padding: 32.5px 35px 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 
   &__content {
     min-height: 0;
-    margin: 22px -8px 0 0;
-    padding: 0 8px 20px 0;
+    margin: 27.5px -10px 0 0;
+    padding: 0 10px 25px 0;
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: #665d91 transparent;
   }
 
   &__section {
-    padding: 18px;
+    padding: 22.5px;
     border: 1px solid rgba(255, 255, 255, 0.06);
     background: rgba(24, 20, 52, 0.42);
 
     & + & {
-      margin-top: 12px;
+      margin-top: 15px;
     }
   }
 
   &__section-title {
     display: flex;
     align-items: flex-start;
-    gap: 10px;
+    gap: 12.5px;
 
     > svg {
-      margin-top: 2px;
+      margin-top: 2.5px;
       flex: 0 0 auto;
       color: #9583ff;
     }
@@ -56,30 +56,30 @@
     }
 
     strong {
-      font-size: 13px;
+      font-size: 16.25px;
       font-weight: 500;
     }
 
     span {
-      margin-top: 3px;
+      margin-top: 3.75px;
       color: #9991b5;
-      font-size: 10px;
+      font-size: 12.5px;
     }
   }
 
   &__radios {
-    margin: 15px 0 0;
+    margin: 18.75px 0 0;
     padding: 0;
     display: flex;
-    gap: 22px;
+    gap: 27.5px;
     border: 0;
 
     label {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       color: #aaa3c3;
-      font-size: 12px;
+      font-size: 15px;
       cursor: pointer;
 
       input {
@@ -95,8 +95,8 @@
   }
 
   &__radio {
-    width: 15px;
-    height: 15px;
+    width: 18.75px;
+    height: 18.75px;
     display: grid;
     place-items: center;
     border: 1px solid #746ca0;
@@ -104,8 +104,8 @@
 
     &::after {
       content: "";
-      width: 7px;
-      height: 7px;
+      width: 8.75px;
+      height: 8.75px;
       border-radius: 50%;
       background: #927cff;
       transform: scale(0);
@@ -118,12 +118,12 @@
   }
 
   &__toggle-row {
-    margin-top: 15px;
+    margin-top: 18.75px;
     display: inline-flex;
     align-items: center;
-    gap: 9px;
+    gap: 11.25px;
     color: #ddd8ed;
-    font-size: 12px;
+    font-size: 15px;
     cursor: pointer;
 
     input {
@@ -135,19 +135,19 @@
 
   &__toggle {
     position: relative;
-    width: 34px;
-    height: 18px;
-    border-radius: 20px;
+    width: 42.5px;
+    height: 22.5px;
+    border-radius: 25px;
     background: #454064;
     transition: background-color 0.18s ease;
 
     &::after {
       content: "";
       position: absolute;
-      top: 3px;
-      left: 3px;
-      width: 12px;
-      height: 12px;
+      top: 3.75px;
+      left: 3.75px;
+      width: 15px;
+      height: 15px;
       border-radius: 50%;
       background: #bbb5cd;
       transition: transform 0.18s ease, background-color 0.18s ease;
@@ -164,16 +164,16 @@
   }
 
   &__field {
-    margin-top: 15px;
+    margin-top: 18.75px;
     display: grid;
-    gap: 7px;
+    gap: 8.75px;
 
     > span {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 7.5px;
       color: #cfc9e2;
-      font-size: 11px;
+      font-size: 13.75px;
     }
 
     select,
@@ -184,7 +184,7 @@
       color: #fff;
       background: #211c42;
       font: inherit;
-      font-size: 11px;
+      font-size: 13.75px;
 
       &:focus {
         border-color: #8f79ff;
@@ -192,39 +192,39 @@
     }
 
     select {
-      height: 38px;
-      padding: 0 10px;
+      height: 47.5px;
+      padding: 0 12.5px;
     }
 
     textarea {
-      min-height: 90px;
-      padding: 10px 11px;
+      min-height: 112.5px;
+      padding: 12.5px 13.75px;
       resize: vertical;
       line-height: 1.45;
     }
 
     small {
       color: #817991;
-      font-size: 9px;
+      font-size: 11.25px;
     }
   }
 
   &__token-input {
     display: flex;
     align-items: stretch;
-    gap: 6px;
+    gap: 7.5px;
 
     input {
       min-width: 0;
       flex: 1;
-      height: 38px;
-      padding: 0 11px;
+      height: 47.5px;
+      padding: 0 13.75px;
       border: 1px solid #4a426f;
       outline: none;
       color: #fff;
       background: #211c42;
       font: inherit;
-      font-size: 11px;
+      font-size: 13.75px;
       letter-spacing: 0.02em;
 
       &:focus {
@@ -237,8 +237,8 @@
     }
 
     button {
-      width: 38px;
-      height: 38px;
+      width: 47.5px;
+      height: 47.5px;
       flex: 0 0 38px;
       padding: 0;
       display: grid;
@@ -259,25 +259,25 @@
   &__prompt-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0 12px;
+    gap: 0 15px;
   }
 
   &__add-player {
-    margin-top: 15px;
+    margin-top: 18.75px;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 8px;
+    gap: 10px;
 
     input {
       min-width: 0;
-      height: 38px;
-      padding: 0 11px;
+      height: 47.5px;
+      padding: 0 13.75px;
       border: 1px solid #4a426f;
       outline: none;
       color: #fff;
       background: #211c42;
       font: inherit;
-      font-size: 11px;
+      font-size: 13.75px;
 
       &:focus {
         border-color: #8f79ff;
@@ -289,16 +289,16 @@
     }
 
     button {
-      min-height: 38px;
-      padding: 0 14px;
+      min-height: 47.5px;
+      padding: 0 17.5px;
       display: inline-flex;
       align-items: center;
-      gap: 7px;
+      gap: 8.75px;
       border: 0;
       color: #fff;
       background: #6655c7;
       font: inherit;
-      font-size: 11px;
+      font-size: 13.75px;
       cursor: pointer;
 
       &:hover {
@@ -308,36 +308,36 @@
   }
 
   &__players {
-    margin-top: 10px;
+    margin-top: 12.5px;
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 7.5px;
 
     span {
-      padding: 5px 8px;
+      padding: 6.25px 10px;
       color: #dcd7ef;
       background: #39325f;
-      font-size: 10px;
+      font-size: 12.5px;
     }
   }
 
   &__hint {
-    margin: 9px 0 0;
+    margin: 11.25px 0 0;
     color: #817991;
-    font-size: 9px;
+    font-size: 11.25px;
   }
 
   &__footer {
     flex: 0 0 auto;
-    margin: 0 -28px;
-    padding: 14px 28px;
+    margin: 0 -35px;
+    padding: 17.5px 35px;
     border-top: 1px solid rgba(255, 255, 255, 0.06);
     background: #282247;
   }
 
   @media (max-width: 640px) {
-    padding-left: 18px;
-    padding-right: 18px;
+    padding-left: 22.5px;
+    padding-right: 22.5px;
 
     &__prompt-grid {
       grid-template-columns: 1fr;
@@ -346,7 +346,7 @@
     &__radios {
       align-items: flex-start;
       flex-direction: column;
-      gap: 10px;
+      gap: 12.5px;
     }
 
     &__add-player {
@@ -354,10 +354,10 @@
     }
 
     &__footer {
-      margin-left: -18px;
-      margin-right: -18px;
-      padding-left: 18px;
-      padding-right: 18px;
+      margin-left: -22.5px;
+      margin-right: -22.5px;
+      padding-left: 22.5px;
+      padding-right: 22.5px;
     }
   }
 }

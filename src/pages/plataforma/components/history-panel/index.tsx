@@ -41,6 +41,14 @@ export default function HistoryPanel({ items, onPreview }: HistoryPanelProps) {
                   : item.type === "dice"
                     ? `tirou ${item.result} no d${item.sides}`
                     : "entrou na plataforma"}
+                {item.type === "join" && item.inviteStatus === "pending" && (
+                  <span className="platform-history-item__invite-tag">(usuário convidado)</span>
+                )}
+                {item.type === "join" && item.inviteStatus === "accepted" && (
+                  <span className="platform-history-item__invite-tag platform-history-item__invite-tag--accepted">
+                    (convidado aceito)
+                  </span>
+                )}
               </p>
               {item.type === "image" && (
                 <button type="button" onClick={() => onPreview(item.imageUrl)}>

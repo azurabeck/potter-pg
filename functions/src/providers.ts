@@ -8,7 +8,7 @@
 // repassar o texto pro client conforme ele vai sendo gerado, em vez de
 // esperar a resposta inteira ficar pronta.
 
-export type AiProvider = "anthropic" | "openai" | "gemini";
+export type AiProvider = "anthropic" | "openai" | "gemini" | "grok";
 
 export interface NarrateMessage {
   role: "user" | "assistant";
@@ -19,11 +19,53 @@ export interface NarrateMessage {
 // Atualizado em 2026-07-20: gemini-2.0-flash foi desativado (1º/jun/2026),
 // gpt-4o e claude-sonnet-4-5-20250929 seguiam ativos mas com aviso de
 // substituicao — trocados pelos modelos correntes de cada provedor.
+// "grok" adicionado depois, junto de streamGrok — nome de modelo tambem
+// nao verificado contra a API de verdade (mesma ressalva do IMAGE_MODEL
+// logo abaixo).
 const DEFAULT_MODEL: Record<AiProvider, string> = {
   anthropic: "claude-sonnet-5",
   openai: "gpt-5.2-chat-latest",
   gemini: "gemini-3.5-flash",
+  grok: "grok-4",
 };
+
+// Modelo de geracao de imagem do Gemini (retrato do personagem no wizard
+// de criacao — ver generateCharacterImage em index.ts). Nome de modelo
+// nao verificado contra a API de verdade (sem acesso pra testar) — se a
+// chamada falhar com "model not found" ou parecido, esse e o primeiro
+// lugar pra conferir/trocar.
+const IMAGE_MODEL = "gemini-3.5-flash-image";
+
+// Gera uma imagem a partir de um prompt de texto e devolve como data URL
+// (base64 inline) — sem upload pra Storage, o client guarda essa string
+// direto no campo `image_url` da ficha. Usa a mesma API generateContent
+// do texto, so que pedindo IMAGE em generationConfig.responseModalities;
+// a imagem volta como um `inlineData` dentro dos parts da resposta, no
+// lugar do texto de sempre.
+export async function generateImage(apiKey: string, prompt: string): Promise<string> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${IMAGE_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { responseModalities: ["IMAGE"] },
+    }),
+  });
+
+  if (!response.ok) throw new Error(await extractError(response));
+
+  const data = (await response.json()) as {
+    candidates?: Array<{ content?: { parts?: Array<{ inlineData?: { mimeType?: string; data?: string } }> } }>;
+  };
+
+  const imagePart = data.candidates?.[0]?.content?.parts?.find((part) => part.inlineData?.data);
+  if (!imagePart?.inlineData?.data) throw new Error("A IA não devolveu nenhuma imagem.");
+
+  const mimeType = imagePart.inlineData.mimeType ?? "image/png";
+  return `data:${mimeType};base64,${imagePart.inlineData.data}`;
+}
 
 export async function streamProvider(
   provider: AiProvider,
@@ -39,6 +81,8 @@ export async function streamProvider(
       return streamOpenAi(apiKey, systemPrompt, messages, onDelta);
     case "gemini":
       return streamGemini(apiKey, systemPrompt, messages, onDelta);
+    case "grok":
+      return streamGrok(apiKey, systemPrompt, messages, onDelta);
   }
 }
 
@@ -88,6 +132,41 @@ async function streamOpenAi(
     },
     body: JSON.stringify({
       model: DEFAULT_MODEL.openai,
+      stream: true,
+      messages: [
+        { role: "system", content: systemPrompt },
+        ...messages.map((message) => ({ role: message.role, content: message.content })),
+      ],
+    }),
+  });
+
+  if (!response.ok) throw new Error(await extractError(response));
+
+  await consumeSseLines(response, (data) => {
+    if (data === "[DONE]") return;
+    const event = JSON.parse(data) as { choices?: Array<{ delta?: { content?: string } }> };
+    const text = event.choices?.[0]?.delta?.content;
+    if (text) onDelta(text);
+  });
+}
+
+// API da xAI (Grok) e compativel com o formato de chat completions da
+// OpenAI (mesmo shape de request/resposta/SSE) — so muda o host e o
+// modelo, por isso e essencialmente uma copia de streamOpenAi.
+async function streamGrok(
+  apiKey: string,
+  systemPrompt: string,
+  messages: NarrateMessage[],
+  onDelta: (text: string) => void
+): Promise<void> {
+  const response = await fetch("https://api.x.ai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: DEFAULT_MODEL.grok,
       stream: true,
       messages: [
         { role: "system", content: systemPrompt },

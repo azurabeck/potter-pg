@@ -10,7 +10,7 @@
 
 .platform-page__history-header {
   flex: 0 0 auto;
-  padding: 14px 14px 12px;
+  padding: 17.5px 17.5px 15px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 
   strong,
@@ -19,14 +19,14 @@
   }
 
   strong {
-    font-size: 12px;
+    font-size: 15px;
     font-weight: 500;
   }
 
   span {
-    margin-top: 3px;
+    margin-top: 3.75px;
     color: #817991;
-    font-size: 10px;
+    font-size: 12.5px;
   }
 }
 
@@ -34,32 +34,32 @@
   min-height: 0;
   flex: 1;
   overflow-y: auto;
-  padding: 10px;
+  padding: 12.5px;
   scrollbar-width: thin;
   scrollbar-color: #504776 transparent;
 }
 
 .platform-page__history-empty {
   margin: 0;
-  padding: 20px 8px;
+  padding: 25px 10px;
   color: #817991;
-  font-size: 10px;
+  font-size: 12.5px;
   line-height: 1.5;
   text-align: center;
 }
 
 .platform-history-item {
-  padding: 9px;
+  padding: 11.25px;
   background: rgba(255, 255, 255, 0.025);
 
   & + & {
-    margin-top: 8px;
+    margin-top: 10px;
   }
 
   p {
     margin: 0;
     color: #a9a2c5;
-    font-size: 10px;
+    font-size: 12.5px;
     line-height: 1.45;
   }
 
@@ -68,11 +68,21 @@
     font-weight: 500;
   }
 
+  &__invite-tag {
+    margin-left: 5px;
+    color: #97dcff;
+    font-style: italic;
+
+    &--accepted {
+      color: #7fd88f;
+    }
+  }
+
   button {
     position: relative;
     width: 100%;
-    height: 72px;
-    margin-top: 7px;
+    height: 90px;
+    margin-top: 8.75px;
     padding: 0;
     overflow: hidden;
     border: 0;
@@ -89,15 +99,15 @@
 
   button span {
     position: absolute;
-    right: 5px;
-    bottom: 5px;
-    padding: 3px 5px;
+    right: 6.25px;
+    bottom: 6.25px;
+    padding: 3.75px 6.25px;
     display: inline-flex;
     align-items: center;
-    gap: 3px;
+    gap: 3.75px;
     color: #fff;
     background: rgba(15, 12, 34, 0.82);
-    font-size: 8px;
+    font-size: 10px;
     opacity: 0;
     transition: opacity 0.15s ease;
   }
@@ -109,7 +119,7 @@
 
 @media (max-width: 980px) {
   .platform-page__history {
-    min-height: 150px;
-    max-height: 210px;
+    min-height: 187.5px;
+    max-height: 262.5px;
   }
 }

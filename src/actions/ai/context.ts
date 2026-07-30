@@ -4,16 +4,16 @@
 // maestria), NPCs conhecidos e as campanhas recentes — pra ela ter
 // continuidade real com o que ja aconteceu, em vez de narrar no vacuo.
 
-import { getNpcCharacters } from "@/actions/get/characters";
+import { getNpcs } from "@/actions/get/npcs";
 import { getRecentCampaigns } from "@/actions/get/campaigns";
 import { getSpells } from "@/actions/get/spells";
-import type { Campaign, Character } from "@/utils/types";
+import type { Campaign, Character, Npc } from "@/utils/types";
 
 const RECENT_CAMPAIGNS_COUNT = 5;
 
 export async function buildCampaignContext(character: Character): Promise<string> {
   const [npcs, campaigns, spells] = await Promise.all([
-    getNpcCharacters(),
+    getNpcs(),
     getRecentCampaigns(character.id, RECENT_CAMPAIGNS_COUNT),
     getSpells(),
   ]);
@@ -46,7 +46,7 @@ function describeCharacter(character: Character, spellNameById: Map<string, stri
     .join("\n");
 }
 
-function describeNpcs(npcs: Character[]): string {
+function describeNpcs(npcs: Npc[]): string {
   if (npcs.length === 0) return "";
   return `NPCS CONHECIDOS: ${npcs.map((npc) => npc.name).join(", ")}.`;
 }

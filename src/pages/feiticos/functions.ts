@@ -22,9 +22,9 @@ export function emptySlotsCount(spellsOnPage: number, columns: number): number {
 // Estes valores precisam continuar iguais aos usados em style.scss.
 // O objetivo não é impor uma quantidade por página: eles só definem o
 // tamanho desejado da carta. A quantidade final é calculada pelo espaço real.
-const CARD_TARGET_WIDTH = 82;
+const CARD_TARGET_WIDTH = 102.5;
 const CARD_ASPECT_RATIO = 100 / 139; // largura / altura
-const GRID_GAP = 7;
+const GRID_GAP = 8.75;
 
 export interface SpellGridMetrics {
   columns: number;
@@ -63,4 +63,29 @@ export function calculateGridMetrics(
     rows,
     pageSize: columns * rows,
   };
+}
+
+/**
+ * Maestria atual (0-10) a partir do XP salvo na ficha do personagem pra
+ * esse feitiço (`CharacterHabilidade.xp`) contra a tabela `xp_maestria`
+ * dele (chaves "M1".."M10", valor = XP necessário) — maior tier já
+ * alcançado. Mesma lógica de `currentMasteryTier` em
+ * `pages/pocoes/functions.ts` (duplicada de propósito — ver doc.md).
+ */
+export function currentMasteryTier(spell: Spell, currentXp: number): number {
+  return Object.entries(spell.attributes.xp_maestria).reduce((tier, [key, requiredXp]) => {
+    if (currentXp < requiredXp) return tier;
+    const numeric = Number(key.replace(/\D/g, ""));
+    return Math.max(tier, Number.isNaN(numeric) ? tier : numeric);
+  }, 0);
+}
+
+/** Se o tier atual cai dentro do intervalo [from, to] de um `MasteryEffect`. */
+export function matchesMasteryRange(from: number, to: number, tier: number): boolean {
+  return tier >= from && tier <= to;
+}
+
+/** "M3" ou "M1-M4" — rótulo legível do intervalo de um `MasteryEffect`. */
+export function masteryRangeLabel(from: number, to: number): string {
+  return from === to ? `M${from}` : `M${from}-M${to}`;
 }

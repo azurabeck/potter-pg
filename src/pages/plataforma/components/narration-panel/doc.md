@@ -12,3 +12,13 @@ Sem mensagens, mostra um estado vazio pedindo pra apertar o botão
 lógica própria de início. Rola pro fim automaticamente a cada mudança,
 observando o próprio container via `MutationObserver` (não depende de
 `messages` como array de dependências do efeito).
+
+Quando a última mensagem é do "Narrador" e o pai passa
+`onRegenerateLast`, aparece um botão **"Refazer última resposta"** logo
+depois do feed (`.platform-page__regenerate-button`) — some sozinho se
+a última fala for de outra pessoa (nada pra refazer) ou se `onRegenerateLast`
+não for passado. `regenerating` só desabilita o botão e anima o ícone
+(reaproveita `.platform-page__spinner` de `pages/plataforma/style.scss`,
+já que os dois `style.scss` fazem parte do mesmo bundle global e não são
+escopados por arquivo); toda a lógica de qual chamada refazer vive em
+`regenerateLastMessage` (`pages/plataforma/index.tsx`).

@@ -8,7 +8,20 @@ Sidebar / conteúdo da rota / CharacterPanel).
 
 - `__portrait-card`: retrato do personagem ativo (`activeCharacter.image_url`,
   com fallback pra `image_url_ano_1`), ou iniciais em bloco quando não
-  há nenhuma imagem.
+  há nenhuma imagem. Quando há mais gente na mesa (`tableCharacters`,
+  `context/character` — anfitrião + convidados que já registraram
+  personagem, ver doc do `plataforma`), a área vira `__roster`: uma
+  grade com o próprio personagem primeiro e os demais depois, cada um
+  com retrato, nome, uma bolinha de status (`__roster-status`,
+  `--online` quando `isUserOnline(character.user_id)` do contexto —
+  presença de verdade, ver seção "Presença" abaixo) e, pros outros
+  (não pro próprio), dois botões: `__roster-remove` (ainda só visual,
+  sem ação — tirar alguém da mesa não está implementado) e
+  `__roster-goto`, que chama `setEncounterTarget` do contexto pra abrir
+  o pedido de encontro na Plataforma (mesmo fluxo que o antigo botão
+  "Encontrar"). Como o convite aceito vale pra sempre (ver doc do
+  `plataforma`), essa lista funciona como uma lista de amigos: quem
+  entra na mesa fica até alguém implementar o `remove`.
 - `__sheet-card`:
   - `__identity`: nome do personagem — vira um `<select>` quando o
     usuário tem mais de um personagem (`characters.length > 1`),

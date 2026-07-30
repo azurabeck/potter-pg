@@ -18,7 +18,7 @@
   }
 
   &--locked {
-    padding: 3px;
+    padding: 3.75px;
     border: 1px dashed $color-border-gold-strong;
     filter: grayscale(.8) brightness(.68);
 
@@ -37,7 +37,7 @@
   }
 
   &--locked &__image {
-    border-radius: 2px;
+    border-radius: 2.5px;
     opacity: .52;
   }
 
@@ -46,11 +46,11 @@
     left: 0;
     right: 0;
     bottom: 0;
-    padding: 6px 8px;
+    padding: 7.5px 10px;
     overflow: hidden;
     color: #fff;
     background: rgba(0, 0, 0, .58);
-    font-size: 11px;
+    font-size: 13.75px;
     font-weight: 500;
     line-height: 1.3;
     text-align: left;

@@ -1,0 +1,192 @@
+@use "@/assets/styles/variables" as *;
+
+.misterios-page {
+  height: 100%;
+  min-height: 0;
+  padding: 23.75px 20px 17.5px 27.5px;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+
+  &__heading h1 {
+    margin: 0;
+    color: #fff;
+    font-size: 26.25px;
+    line-height: 1;
+    font-weight: 400;
+  }
+
+  &__heading p {
+    margin: 10px 0 0;
+    color: $color-text-muted;
+    font-size: 13.75px;
+  }
+
+  &__status {
+    margin-top: 30px;
+    color: $color-text-muted;
+    font-size: 12.5px;
+  }
+
+  &__status--error {
+    color: $color-hp;
+  }
+
+  &__category {
+    margin-top: 35px;
+
+    &:first-of-type {
+      margin-top: 42.5px;
+    }
+
+    h2 {
+      margin: 0 0 15px;
+      color: $color-gold;
+      font-size: 13.75px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+  }
+
+  &__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 10px;
+  }
+
+  &__item {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: $color-bg-panel-alt;
+  }
+
+  &__item-header {
+    width: 100%;
+    min-height: 50px;
+    padding: 0 17.5px;
+    display: flex;
+    align-items: center;
+    gap: 12.5px;
+    border: 0;
+    background: transparent;
+    color: #fff;
+    font: inherit;
+    cursor: pointer;
+    text-align: left;
+
+    svg {
+      flex: 0 0 auto;
+      margin-left: auto;
+      color: rgba(255, 255, 255, 0.5);
+      transition: transform 0.16s ease;
+
+      &.is-open {
+        transform: rotate(180deg);
+      }
+    }
+  }
+
+  &__item-name {
+    color: #fff;
+    font-size: 16.25px;
+    font-weight: 500;
+  }
+
+  &__item-meta {
+    padding: 0 17.5px 15px;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 13.12px;
+  }
+
+  &__item-details {
+    padding: 0 17.5px 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding-top: 15px;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 15px;
+    line-height: 1.55;
+
+    p {
+      margin: 0 0 10px;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    strong {
+      color: rgba(255, 255, 255, 0.6);
+      font-weight: 500;
+    }
+  }
+
+  &__flag {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 13.75px;
+  }
+
+  &__empty-clues {
+    color: rgba(255, 255, 255, 0.45);
+    font-style: italic;
+  }
+
+  &__clues {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 12.5px;
+
+    li {
+      padding: 12.5px 15px;
+      border-left: 2px solid rgba(255, 255, 255, 0.14);
+      background: rgba(0, 0, 0, 0.16);
+    }
+
+    p {
+      margin: 5px 0 0;
+    }
+  }
+
+  &__clue-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12.5px;
+
+    span:first-child {
+      color: $color-gold;
+      font-size: 14.38px;
+      font-weight: 500;
+    }
+  }
+
+  &__badge {
+    flex: 0 0 auto;
+    padding: 2.5px 8.75px;
+    border-radius: 3.75px;
+    font-size: 11.88px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+
+  &__badge--em-andamento,
+  &__badge--em-aberto {
+    background: rgba(151, 220, 255, 0.16);
+    color: $color-gold;
+  }
+
+  &__badge--resolvido {
+    background: rgba(63, 157, 95, 0.2);
+    color: #6fce8f;
+  }
+
+  &__badge--cancelado {
+    background: rgba(161, 63, 79, 0.22);
+    color: #ff98a8;
+  }
+}

@@ -1,8 +1,11 @@
 // src/context/character/index.tsx
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useAuth } from "@/context/auth";
-import { getPlayerCharacters } from "@/actions/get/characters";
-import type { Character } from "@/utils/types";
+import { getCharacterById, getPlayerCharacters } from "@/actions/get/characters";
+import { getActiveTableSeat, subscribeToHostInvites } from "@/actions/get/invites";
+import { subscribeToUserPresence } from "@/actions/get/presence";
+import { PRESENCE_HEARTBEAT_INTERVAL_MS, sendPresenceHeartbeat } from "@/actions/sets/presence";
+import type { Character, TableInvite } from "@/utils/types";
 
 const ACTIVE_CHARACTER_STORAGE_KEY = "potter-pg:active-character-id";
 
@@ -11,9 +14,16 @@ interface CharacterContextValue {
   activeCharacter: Character | null;
   loading: boolean;
   selectCharacter: (id: string) => void;
+  refreshCharacters: () => Promise<void>;
   sheetVisible: boolean;
   showSheet: () => void;
   hideSheet: () => void;
+  guestSeat: TableInvite | null;
+  guestSeatLoading: boolean;
+  tableCharacters: Character[];
+  encounterTarget: Character | null;
+  setEncounterTarget: (character: Character | null) => void;
+  isUserOnline: (userId: string | undefined) => boolean;
 }
 
 const CharacterContext = createContext<CharacterContextValue>({
@@ -21,22 +31,54 @@ const CharacterContext = createContext<CharacterContextValue>({
   activeCharacter: null,
   loading: false,
   selectCharacter: () => {},
+  refreshCharacters: async () => {},
   sheetVisible: false,
   showSheet: () => {},
   hideSheet: () => {},
+  guestSeat: null,
+  guestSeatLoading: false,
+  tableCharacters: [],
+  encounterTarget: null,
+  setEncounterTarget: () => {},
+  isUserOnline: () => false,
 });
 
 export function CharacterProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [characters, setCharacters] = useState<Character[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  // Comeca `true` (em vez de `false`) pra App.tsx nao enxergar, por um
+  // instante antes do efeito abaixo rodar, `loading: false` com
+  // `characters: []` — o que pareceria "usuario sem nenhuma ficha" e
+  // piscaria o wizard de criacao a toa antes da busca real terminar.
+  const [loading, setLoading] = useState(true);
   const [sheetVisible, setSheetVisible] = useState(false);
+  const [guestSeat, setGuestSeat] = useState<TableInvite | null>(null);
+  const [guestSeatLoading, setGuestSeatLoading] = useState(true);
+  const [tableCharacters, setTableCharacters] = useState<Character[]>([]);
+  const [encounterTarget, setEncounterTarget] = useState<Character | null>(null);
+  const [onlineUsers, setOnlineUsers] = useState<Record<string, boolean>>({});
+
+  // Heartbeat de presença: só existe pra dizer "estou com o app aberto e
+  // logado agora" — não tem relação com qual personagem está ativo, por
+  // isso depende só de `user` (ver actions/sets/presence.ts pro porquê do
+  // intervalo e do porquê de não existir um "avisar que desconectei").
+  useEffect(() => {
+    if (!user) return;
+
+    sendPresenceHeartbeat(user.uid).catch((error) => console.error("Erro ao enviar heartbeat de presença:", error));
+    const interval = setInterval(() => {
+      sendPresenceHeartbeat(user.uid).catch((error) => console.error("Erro ao enviar heartbeat de presença:", error));
+    }, PRESENCE_HEARTBEAT_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [user]);
 
   useEffect(() => {
     if (!user) {
       setCharacters([]);
       setActiveId(null);
+      setLoading(false);
       return;
     }
 
@@ -63,12 +105,132 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
     };
   }, [user]);
 
+  // Recarrega a lista sem esperar o efeito acima — usado pelo wizard de
+  // criacao de ficha (`pages/character-wizard`) depois de criar a
+  // primeira ficha do usuario, pra `characters` deixar de estar vazio e
+  // `App.tsx` trocar o wizard pelo resto do app.
+  async function refreshCharacters() {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const data = await getPlayerCharacters(user.uid);
+      setCharacters(data);
+      const storedId = localStorage.getItem(ACTIVE_CHARACTER_STORAGE_KEY);
+      const restored = data.find((c) => c.id === storedId);
+      setActiveId((current) => (data.some((c) => c.id === current) ? current : restored?.id ?? data[0]?.id ?? null));
+    } catch (err) {
+      console.error("Erro ao recarregar personagens:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function selectCharacter(id: string) {
     setActiveId(id);
     localStorage.setItem(ACTIVE_CHARACTER_STORAGE_KEY, id);
   }
 
   const activeCharacter = characters.find((c) => c.id === activeId) ?? null;
+
+  // Convite aceito mais recente pro e-mail do usuario logado, se houver —
+  // decide se essa sessao esta "sentada" na mesa de outra pessoa (ver
+  // `pages/plataforma`). Fica aqui (em vez de local na Plataforma) pra
+  // `tableCharacters`, abaixo, ficar disponivel pro CharacterPanel global
+  // mesmo fora daquela pagina.
+  useEffect(() => {
+    const email = user?.email;
+    if (!email) {
+      setGuestSeat(null);
+      setGuestSeatLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setGuestSeatLoading(true);
+    getActiveTableSeat(email)
+      .then((seat) => {
+        if (!cancelled) setGuestSeat(seat);
+      })
+      .catch((error) => {
+        console.error("Erro ao verificar convite aceito:", error);
+      })
+      .finally(() => {
+        if (!cancelled) setGuestSeatLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.email]);
+
+  // Quem mais esta na mesma mesa (anfitriao + convidados que ja
+  // registraram personagem) — a "lista de amigos" persistente que o
+  // CharacterPanel mostra na area do retrato. Escuta os convites do
+  // anfitriao (a propria mesa, se for o anfitriao, ou a do `guestSeat`,
+  // se for convidado).
+  useEffect(() => {
+    const hostUid = guestSeat?.hostUserId ?? user?.uid;
+    const hostCharacterId = guestSeat?.hostCharacterId ?? activeCharacter?.id;
+    if (!hostUid) {
+      setTableCharacters([]);
+      return;
+    }
+
+    return subscribeToHostInvites(hostUid, (invites) => {
+      const guestCharacterIds = invites
+        .filter((invite) => invite.status === "accepted" && invite.guestCharacterId)
+        .map((invite) => invite.guestCharacterId as string);
+
+      const allIds = Array.from(new Set([...(hostCharacterId ? [hostCharacterId] : []), ...guestCharacterIds])).filter(
+        (id) => id !== activeCharacter?.id
+      );
+
+      if (allIds.length === 0) {
+        setTableCharacters([]);
+        return;
+      }
+
+      Promise.all(allIds.map((id) => getCharacterById(id)))
+        .then((data) => {
+          setTableCharacters(data.filter((character): character is Character => character !== null));
+        })
+        .catch((error) => console.error("Erro ao buscar personagens da mesa:", error));
+    });
+  }, [guestSeat?.hostUserId, guestSeat?.hostCharacterId, user?.uid, activeCharacter?.id]);
+
+  // Um listener de presença por dono de personagem visível (o próprio +
+  // quem está na mesa) — string estável (ordenada e sem duplicata) como
+  // dependência pra não reassinar tudo a cada nova referência de array
+  // que `tableCharacters` recebe (o snapshot de convites acima recria o
+  // array mesmo quando o conteúdo não muda de verdade).
+  const rosterUserIdsKey = useMemo(() => {
+    const ids = [activeCharacter?.user_id, ...tableCharacters.map((character) => character.user_id)].filter(
+      (id): id is string => Boolean(id)
+    );
+    return Array.from(new Set(ids)).sort().join(",");
+  }, [activeCharacter?.user_id, tableCharacters]);
+
+  useEffect(() => {
+    const userIds = rosterUserIdsKey ? rosterUserIdsKey.split(",") : [];
+    if (userIds.length === 0) {
+      setOnlineUsers({});
+      return;
+    }
+
+    const unsubscribes = userIds.map((userId) =>
+      subscribeToUserPresence(userId, (online) => {
+        setOnlineUsers((current) => ({ ...current, [userId]: online }));
+      })
+    );
+
+    return () => {
+      unsubscribes.forEach((unsubscribe) => unsubscribe());
+    };
+  }, [rosterUserIdsKey]);
+
+  function isUserOnline(userId: string | undefined): boolean {
+    return userId ? (onlineUsers[userId] ?? false) : false;
+  }
 
   return (
     <CharacterContext.Provider
@@ -77,9 +239,16 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
         activeCharacter,
         loading,
         selectCharacter,
+        refreshCharacters,
         sheetVisible,
         showSheet: () => setSheetVisible(true),
         hideSheet: () => setSheetVisible(false),
+        guestSeat,
+        guestSeatLoading,
+        tableCharacters,
+        encounterTarget,
+        setEncounterTarget,
+        isUserOnline,
       }}
     >
       {children}

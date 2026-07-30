@@ -78,6 +78,8 @@ export default function Feiticos() {
 
   const pageSpells = paginateSpells(filteredSpells, page, pageSize);
   const emptySlots = emptySlotsCount(pageSpells.length, columns);
+  const selectedSpellXp =
+    selectedSpell && activeCharacter ? activeCharacter.habilidades[selectedSpell.id]?.xp ?? 0 : 0;
 
   return (
     <div className="feiticos-page">
@@ -123,6 +125,7 @@ export default function Feiticos() {
         <SpellDetailModal
           spell={selectedSpell}
           locked={isSpellLocked(selectedSpell, activeCharacter)}
+          currentXp={selectedSpellXp}
           onClose={() => setSelectedSpell(null)}
         />
       )}

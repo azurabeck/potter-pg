@@ -18,7 +18,7 @@ export default function Sidebar() {
   // property, já que a coluna do sidebar é definida lá fora, não aqui.
   useEffect(() => {
     localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(collapsed));
-    document.documentElement.style.setProperty("--sidebar-width", collapsed ? "72px" : "192px");
+    document.documentElement.style.setProperty("--sidebar-width", collapsed ? "90px" : "240px");
     return () => {
       document.documentElement.style.removeProperty("--sidebar-width");
     };
@@ -37,8 +37,8 @@ export default function Sidebar() {
         ) : (
           <div className="sidebar__avatar-fallback">{initials(name)}</div>
         )}
-        <strong>{name}</strong>
-        <span>{"personagem ativo"}</span>
+        {/* <strong>{name}</strong>
+        <span>{"personagem ativo"}</span> */}
       </div>
 
       <nav className="sidebar__items">

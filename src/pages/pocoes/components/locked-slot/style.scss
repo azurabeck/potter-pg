@@ -1,0 +1,14 @@
+@use "@/assets/styles/variables" as *;
+
+.locked-slot {
+  width: 100%;
+  min-width: 0;
+  aspect-ratio: 100 / 139;
+  display: grid;
+  place-items: center;
+  border: 1px dashed $color-border-gold-strong;
+  border-radius: 0;
+  background: $color-bg-panel-alt;
+  color: $color-border-gold-strong;
+  opacity: .7;
+}

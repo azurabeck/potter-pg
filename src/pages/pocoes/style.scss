@@ -1,0 +1,60 @@
+@use "@/assets/styles/variables" as *;
+
+.pocoes-page {
+  height: 100%;
+  min-height: 0;
+  padding: 23.75px 20px 17.5px 27.5px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  &__top {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 30px;
+  }
+
+  &__heading h1 {
+    color: #fff;
+    font-size: 26.25px;
+    line-height: 1;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  &__status {
+    color: $color-text-muted;
+    font-size: 12.5px;
+    margin-top: 30px;
+  }
+
+  &__status--error { color: $color-hp; }
+
+  &__grid {
+    flex: 1;
+    min-height: 0;
+    margin: 42.5px 0 0;
+    width: 100%;
+    display: grid;
+    grid-auto-rows: max-content;
+    align-content: start;
+    gap: 8.75px;
+    overflow: hidden;
+  }
+
+  @media (max-width: 720px) {
+    padding-inline: 17.5px;
+
+    &__top {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .filter-bar { width: 100%; }
+    &__grid { margin-top: 20px; }
+  }
+}

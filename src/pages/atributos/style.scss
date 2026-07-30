@@ -1,0 +1,238 @@
+@use "@/assets/styles/variables" as *;
+
+.atributos-page {
+  height: 100%;
+  min-height: 0;
+  padding: 23.75px 20px 17.5px 27.5px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  &__top {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 30px;
+  }
+
+  &__heading {
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+    flex-wrap: wrap;
+
+    h1 {
+      margin: 0;
+      color: #fff;
+      font-size: 26.25px;
+      line-height: 1;
+      font-weight: 400;
+    }
+
+    p {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 13.75px;
+    }
+
+    strong {
+      color: $color-gold;
+      font-weight: 600;
+    }
+  }
+
+  &__status {
+    color: $color-text-muted;
+    font-size: 12.5px;
+    margin-top: 30px;
+  }
+
+  &__content {
+    flex: 1;
+    min-height: 0;
+    margin-top: 42.5px;
+    overflow-y: auto;
+    display: grid;
+    align-content: start;
+    gap: 37.5px;
+    padding-right: 10px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  }
+
+  &__section {
+    h2 {
+      margin: 0 0 17.5px;
+      color: $color-gold;
+      font-size: 13.75px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+
+      span {
+        color: rgba(255, 255, 255, 0.35);
+        font-weight: 400;
+        text-transform: none;
+        letter-spacing: 0;
+      }
+    }
+  }
+
+  // Grade compacta de atributos: ícone + nome + valor/máximo + barra,
+  // pensada pra ler rápido sem precisar rolar uma lista comprida.
+  &__attr-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 10px;
+  }
+
+  &__attr-card {
+    min-width: 0;
+    padding: 11.25px 13.75px;
+    display: flex;
+    align-items: center;
+    gap: 11.25px;
+    background: $color-bg-panel-alt;
+    transition: background-color 0.16s ease;
+
+    &:hover {
+      background: $color-bg-panel-soft;
+    }
+  }
+
+  &__attr-icon {
+    width: 32.5px;
+    height: 32.5px;
+    flex: 0 0 26px;
+    display: grid;
+    place-items: center;
+    background: rgba(102, 86, 255, 0.14);
+    color: #aaa2ff;
+  }
+
+  &__attr-info {
+    min-width: 0;
+    flex: 1;
+    display: grid;
+    gap: 6.25px;
+  }
+
+  &__attr-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  &__attr-name {
+    overflow: hidden;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 14.38px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  &__attr-value {
+    flex: 0 0 auto;
+    color: $color-gold;
+    font-size: 15px;
+    font-weight: 600;
+
+    small {
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 11.25px;
+      font-weight: 400;
+    }
+  }
+
+  &__attr-bar {
+    height: 5px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+  }
+
+  &__attr-bar-fill {
+    height: 100%;
+    min-width: 2.5px;
+    background: linear-gradient(90deg, #6656ff, $color-gold);
+  }
+
+  &__extra-list {
+    display: grid;
+    gap: 10px;
+  }
+
+  &__extra-card {
+    padding: 15px 17.5px;
+    border-left: 2px solid rgba(255, 255, 255, 0.16);
+    background: $color-bg-panel-alt;
+  }
+
+  &__extra-card--talento {
+    border-left-color: #e05c5c;
+  }
+
+  &__extra-card--titulo {
+    border-left-color: #6656ff;
+  }
+
+  &__extra-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12.5px;
+
+    strong {
+      color: #fff;
+      font-size: 15.62px;
+      font-weight: 500;
+    }
+  }
+
+  &__badge {
+    flex: 0 0 auto;
+    padding: 2.5px 10px;
+    border-radius: 3.75px;
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 12.5px;
+    font-weight: 600;
+  }
+
+  &__extra-details {
+    margin-top: 10px;
+    display: grid;
+    gap: 3.75px;
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 13.75px;
+    line-height: 1.55;
+
+    p {
+      margin: 0;
+      white-space: pre-line;
+    }
+
+    span {
+      color: $color-gold;
+    }
+  }
+
+  @media (max-width: 720px) {
+    padding-inline: 17.5px;
+
+    &__top {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .filter-bar {
+      width: 100%;
+    }
+
+    &__attr-grid {
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    }
+  }
+}

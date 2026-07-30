@@ -1,0 +1,74 @@
+@use "@/assets/styles/variables" as *;
+
+.invite-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25px;
+  background: $color-border-gold;
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 12.5px;
+    padding: 12.5px 25px;
+    background: $color-bg-panel-alt;
+    color: $color-text-light;
+
+    svg {
+      flex: 0 0 auto;
+      color: $color-gold-bright;
+    }
+
+    p {
+      flex: 1;
+      margin: 0;
+      font-size: 15px;
+
+      strong {
+        color: $color-gold-bright;
+      }
+    }
+  }
+
+  &__actions {
+    display: flex;
+    gap: 10px;
+  }
+
+  &__accept,
+  &__reject {
+    height: 37.5px;
+    padding: 0 15px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7.5px;
+    border: 0;
+    border-radius: 5px;
+    font-size: 13.75px;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  &__accept {
+    background: #3f9d5f;
+    color: #fff;
+
+    &:hover:not(:disabled) {
+      background: #48b06b;
+    }
+  }
+
+  &__reject {
+    background: #a13f4f;
+    color: #fff;
+
+    &:hover:not(:disabled) {
+      background: #b64858;
+    }
+  }
+}

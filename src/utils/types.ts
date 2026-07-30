@@ -57,6 +57,40 @@ export interface Spell {
   attributes: SpellAttributes;
 }
 
+export interface PotionIngredient {
+  value: string;
+  name: string;
+  shop: string;
+  drop: string;
+  note?: string;
+}
+
+// "1-4", "5-9", "10" — faixa de maestria (M1-M10, ver `xp_maestria`
+// abaixo) que esse efeito cobre.
+export interface PotionMasteryEffect {
+  mastery: string;
+  effect: string;
+  recipe: string;
+}
+
+// Documento da colecao "potions" — ao contrario de `Spell`, os campos
+// ficam direto na raiz do documento (sem wrapper `attributes`).
+export interface Potion {
+  id: string;
+  name: string;
+  ano: number;
+  ingredientes_info: PotionIngredient[];
+  cooking: string;
+  nivel: string;
+  xp_maestria: Record<string, number>;
+  xp_total: number;
+  aula: string;
+  card_image_url: string;
+  image_url: string;
+  effect: string;
+  mastery_effect: PotionMasteryEffect[];
+}
+
 export interface CharacterMoney {
   galeoes: number;
   sicles: number;
@@ -141,7 +175,7 @@ export const EMPTY_AI_PROMPTS: AiPrompts = {
 
 // Qual provedor de IA narra e o token do proprio usuario pra chamar a API
 // dele direto do navegador (mesmo documento "settings" dos prompts).
-export type AiProvider = "anthropic" | "openai" | "gemini";
+export type AiProvider = "anthropic" | "openai" | "gemini" | "grok";
 
 export interface AiProviderConfig {
   provider: AiProvider;
@@ -153,9 +187,9 @@ export const EMPTY_AI_PROVIDER_CONFIG: AiProviderConfig = {
   apiKey: "",
 };
 
-// Personagem vindo da colecao "characters" do Firestore. Contempla tanto
-// personagens de jogador ("player", buscados por getPlayerCharacters)
-// quanto NPCs ("npc", buscados por getNpcCharacters — ver actions/get/characters.ts).
+// Personagem de jogador vindo da colecao "characters" do Firestore
+// (buscados por getPlayerCharacters — ver actions/get/characters.ts).
+// NPCs moram numa colecao separada, "npcs" — ver `Npc` abaixo.
 export interface Character {
   id: string;
   name: string;
@@ -167,7 +201,11 @@ export interface Character {
   nascimento?: string;
   image_url?: string;
   image_url_ano_1?: string;
+  pet_url?: string;
   hp?: number;
+  personalidade?: string;
+  caracteristicas_fisicas?: string;
+  historia?: string;
   atributos: Record<string, number>;
   dinheiro: CharacterMoney;
   habilidades: Record<string, CharacterHabilidade>;
@@ -178,6 +216,156 @@ export interface Character {
   varinha?: CharacterVarinha;
   campaign_ids: string[];
   mystery_ids: string[];
+  // Adversários (criaturas da coleção "enemies" ou NPCs hostis) que este
+  // personagem já conheceu/enfrentou — popula sozinho no registro de
+  // sessão (ver pages/plataforma/functions.ts, `adversary_encounters`),
+  // sem aprovação manual (é só um registro de "já vi isso", não uma
+  // criação). `tipo` diz em qual coleção procurar o id (ver
+  // pages/adversarios).
+  adversarios_conhecidos?: KnownAdversary[];
+  // Ids da coleção "locations" que este personagem já conhece — mesma
+  // mecânica de `adversarios_conhecidos`, mas sem `tipo` porque só existe
+  // uma coleção de locais (ver pages/locais). Populado pelo botão de
+  // relacionar do potter-spells (dashboard do mestre), não pelo jogador.
+  locais_conhecidos?: string[];
+}
+
+export interface KnownAdversary {
+  id: string;
+  tipo: "enemy" | "npc";
+}
+
+// Documento da colecao "locations" — global, sem filtro por dono na
+// leitura (mesmo padrão de "npcs"/"enemies", ver actions/get/locations.ts).
+// `access_character_ids` é "quem tem acesso" (conceito do mestre, no
+// dashboard potter-spells) — diferente de `Character.locais_conhecidos`
+// ("o que esse personagem já descobriu"), que é o que esta página filtra.
+export interface Location {
+  id: string;
+  name: string;
+  type: string;
+  characteristics?: string;
+  importance?: string;
+  image_url?: string;
+  access_character_ids?: string[];
+  user_id?: string;
+}
+
+// Documento da colecao "npcs" (separada de "characters" — confirmado no
+// console do Firebase do projeto: campos de atributo usam as mesmas 18
+// chaves em português usadas no projeto de referência). Alguns campos
+// têm mais de um nome possível (`ano`/`year`, `casa`/`house`,
+// `student_year`/`studentYear`) — mesma leniência defensiva do projeto
+// de referência (ver getNpcAno/getNpcCampaignYear/getNpcHouse em
+// pages/relacoes/functions.ts), porque não dá pra garantir qual nome
+// cada NPC já cadastrado usa.
+export interface Npc {
+  id: string;
+  user_id?: string;
+  name: string;
+  tipo?: string;
+  casa?: string;
+  house?: string;
+  ano?: number;
+  year?: number;
+  student_year?: number;
+  studentYear?: number;
+  relacao?: string;
+  // Ids de personagens (`player`) que este NPC está relacionado — array
+  // ou string única (dado legado, mesma leniência do projeto de
+  // referência). Normalizar sempre antes de ler (ver getRelatedNpcs).
+  relacionado?: string[] | string;
+  amizade?: number;
+  confianca?: number;
+  caracteristicas?: string;
+  personalidade?: string;
+  detalhes?: string;
+  image_url?: string;
+  atributos: Record<string, number>;
+  habilidades?: Record<string, unknown>;
+  pocoes?: Record<string, unknown>;
+}
+
+// Ataque (principal ou secundário) de um adversário — `distance` usa os
+// códigos internos do projeto de referência ("short"/"medium"/"long"/
+// "short_medium"/"medium_long"), não os rótulos em português.
+export interface EnemyAttack {
+  name: string;
+  attribute: string;
+  attribute_value: number;
+  distance: string;
+  effect: string;
+}
+
+export interface EnemyDefense {
+  attribute: string;
+  attribute_value: number;
+}
+
+// Documento da colecao "enemies" — bestiário/adversários, separado de
+// "npcs" e "characters". Só leitura no potter-pg por enquanto (ver doc
+// de pages/adversarios): cadastro é feito direto no console do
+// Firebase, igual a spells/potions.
+export interface Enemy {
+  id: string;
+  name: string;
+  type: string;
+  hp: number;
+  difficulty: string;
+  recommended_year: number;
+  impact_die: string;
+  image_url?: string;
+  local?: string;
+  caracteristicas?: string;
+  main_attack: EnemyAttack | null;
+  secondary_attack: EnemyAttack | null;
+  defense: EnemyDefense;
+}
+
+// "mistérios" cobre mistérios de verdade; as outras 3 categorias são
+// outros tipos de registro que o narrador/IA acompanha na mesma aba
+// (mesmo modelo usado num projeto irmão deste — ver doc de `pages/misterios`).
+export type MysteryCategory = "mistérios" | "projetos" | "pendencias narrador" | "proxima sessão";
+
+export type MysteryStatus = "em andamento" | "resolvido" | "cancelado";
+
+export type MysteryClueStatus = "em aberto" | "resolvido" | "cancelado";
+
+// Uma pista (ou, na categoria "projetos", um objetivo) dentro de um
+// mistério — array `clues` do documento, ordenado por `order`.
+export interface MysteryClue {
+  order: number;
+  name: string;
+  question: string;
+  details: string;
+  resolution: string;
+  status: MysteryClueStatus;
+}
+
+// Documento da colecao "mysteries" — pertence a um personagem
+// (`character_id`; `Character.mystery_ids` guarda só os ids, ver acima).
+// Nem todo campo se aplica a toda categoria (`awaited_event`/
+// `current_situation`/`responder` são só de "pendencias narrador";
+// `next_session` só de "proxima sessão"; `clues` só de "mistérios"/
+// "projetos") — ver `pages/misterios` pra como cada categoria usa os
+// campos. Sem action de escrita ainda: a IA é quem vai criar/atualizar
+// esses documentos ao encerrar uma sessão (não implementado) — esta
+// página só lê.
+export interface Mystery {
+  id: string;
+  user_id: string;
+  character_id: string;
+  category: MysteryCategory;
+  name: string;
+  year: number;
+  status: MysteryStatus;
+  clues: MysteryClue[];
+  details: string;
+  last_appearance: string;
+  next_session: boolean;
+  awaited_event: string;
+  current_situation: string;
+  responder: string;
 }
 
 // Um evento/cena dentro de um documento da colecao "campaigns" — o campo
@@ -196,6 +384,7 @@ export interface CampaignSessionEvent {
 // desses documentos em `campaign_ids` — ver actions/get/campaigns.ts.
 export interface Campaign {
   id: string;
+  user_id: string;
   campaign_name: string;
   campaign_year: number;
   character_id: string;
@@ -211,3 +400,76 @@ export type NarrationMessage = {
   user: string;
   text: string;
 };
+
+export type TableInviteStatus = "pending" | "accepted" | "rejected";
+
+// Convite pra um usuário entrar na mesa de outro (colecao "invites",
+// actions/get|sets/invites.ts). `toEmail` é a chave de busca — o convite
+// existe antes do convidado necessariamente ter feito nada, então não dá
+// pra guardar um uid de destino ainda. `hostCharacterId` é o personagem
+// do anfitrião, usado só pra saber quem mais está "na mesa" (ver
+// `Encounter` abaixo) — NÃO é mais a sessão de narração compartilhada
+// por padrão (cada personagem narra sozinho até se encontrar com
+// alguém). `guestUserId`/`guestCharacterId`/`guestCharacterName` só
+// existem depois que o convidado aceita e chega na Plataforma com um
+// personagem pronto (preenchidos por `recordGuestCharacter` — pode
+// demorar um pouco a mais que o aceite em si, se ele ainda estava no
+// wizard de criação nesse momento).
+export interface TableInvite {
+  id: string;
+  hostUserId: string;
+  hostCharacterId: string;
+  hostName: string;
+  toEmail: string;
+  status: TableInviteStatus;
+  guestUserId?: string;
+  guestCharacterId?: string;
+  guestCharacterName?: string;
+}
+
+export type EncounterStatus = "pending" | "accepted" | "rejected";
+
+// Pedido de um personagem pra encontrar outro numa mesa (colecao
+// "encounters", actions/get|sets/encounters.ts) — os dois já precisam
+// estar "na mesa" do mesmo anfitrião (ver TableInvite) pra poderem se
+// pedir encontro. `sharedCharacterId` é calculado na criação (os dois
+// characterIds ordenados e unidos, ex. "abc__xyz") — vira o id do
+// `narration_sessions` compartilhado que os dois passam a usar assim
+// que o pedido é aceito, ao invés de cada um narrar na própria sessão.
+export interface Encounter {
+  id: string;
+  fromUserId: string;
+  fromCharacterId: string;
+  fromCharacterName: string;
+  toUserId: string;
+  toCharacterId: string;
+  toCharacterName: string;
+  location: string;
+  status: EncounterStatus;
+  sharedCharacterId: string;
+}
+
+// Pontos que este personagem já somou pra própria casa nesta mesa —
+// `casa`/`ano` NÃO ficam aqui de propósito (já vivem no documento do
+// personagem em "characters"; duplicar arriscaria os dois lugares
+// divergirem). Ver Table abaixo.
+export interface TablePlayer {
+  characterId: string;
+  pointsForHouse: number;
+}
+
+// Documento da colecao "tables" — id do documento == hostUserId (mesmo
+// anfitrião que ancora convites/encontros, ver TableInvite acima). Um só
+// documento por mesa, criado sob demanda na primeira vez que alguém
+// ganha ponto pra casa (ver actions/sets/table.ts, addHousePoints) — não
+// existe fluxo de criação manual. Os totais por casa (pra Taça das
+// Casas, ver pages/personagens) são sempre CALCULADOS a partir de
+// `players` (agrupando pela `casa` do personagem, buscada em
+// "characters"), nunca guardados prontos aqui — assim não existe um
+// segundo lugar pra sincronizar toda vez que um ponto muda.
+export interface Table {
+  id: string;
+  year: number;
+  npcs: string[];
+  players: TablePlayer[];
+}

@@ -5,10 +5,19 @@
 
 export const COLLECTIONS = {
   SPELLS: "spells",
+  POTIONS: "potions",
   CHARACTERS: "characters",
   SETTINGS: "settings",
   CAMPAIGNS: "campaigns",
   NARRATION_SESSIONS: "narration_sessions",
+  INVITES: "invites",
+  ENCOUNTERS: "encounters",
+  MYSTERIES: "mysteries",
+  PRESENCE: "presence",
+  NPCS: "npcs",
+  ENEMIES: "enemies",
+  LOCATIONS: "locations",
+  TABLES: "tables",
 } as const;
 
 export const APP_NAME = "POTTER-PG";
@@ -17,6 +26,10 @@ export const APP_NAME = "POTTER-PG";
 // primeiro render, antes do ResizeObserver medir quantos cabem de verdade
 // no espaco disponivel (ver calculateGridMetrics em pages/feiticos/functions.ts).
 export const SPELLS_PAGE_SIZE_FALLBACK = 30;
+
+// Mesma ideia, pra grade de pocoes (pages/pocoes/functions.ts) — grade
+// identica a de feiticos, entao o mesmo valor serve.
+export const POTIONS_PAGE_SIZE_FALLBACK = 30;
 
 // TODO: substituir por dados reais assim que hp/mp/xp/nivel_geral/meta_atual
 // existirem na colecao "characters" do Firestore. Nome/casa/ano/avatar ja

@@ -1,0 +1,615 @@
+@use "@/assets/styles/variables" as *;
+
+.character-wizard-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 30px;
+  background: radial-gradient(circle at 20% 10%, rgba(143, 124, 255, 0.2), transparent 30%),
+    linear-gradient(135deg, #17132f, #221d45);
+
+  &__card {
+    width: 100%;
+    max-width: 700px;
+    max-height: calc(100vh - 60px);
+    display: flex;
+    flex-direction: column;
+    padding: 42.5px 37.5px;
+    border: 1px solid $color-border-gold;
+    border-radius: 15px;
+    background: rgba(36, 32, 68, 0.96);
+    box-shadow: 0 28px 70px rgba(7, 5, 24, 0.4);
+  }
+
+  &__brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12.5px;
+    margin-bottom: 22.5px;
+    color: $color-text-light;
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  &__brand-icon {
+    width: 30px;
+    height: 30px;
+    color: $color-red-bright;
+  }
+
+  &__title {
+    margin: 0 0 7.5px;
+    text-align: center;
+    font-size: 25px;
+    font-weight: 650;
+  }
+
+  &__subtitle {
+    margin: 0 0 27.5px;
+    text-align: center;
+    color: $color-text-muted;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  &__steps {
+    display: flex;
+    justify-content: center;
+    gap: 22.5px;
+    margin: 0 0 27.5px;
+    padding: 0;
+    list-style: none;
+
+    li {
+      display: flex;
+      align-items: center;
+      gap: 8.75px;
+      color: $color-text-muted;
+      font-size: 13.75px;
+
+      span {
+        width: 25px;
+        height: 25px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: $color-bg-panel-alt;
+        font-size: 12.5px;
+        font-weight: 650;
+      }
+
+      &.is-active {
+        color: $color-text-light;
+
+        span {
+          background: $color-red-bright;
+          color: #fff;
+        }
+      }
+
+      &.is-done span {
+        background: $color-gold-bright;
+        color: #1a1633;
+      }
+    }
+  }
+
+  &__content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 5px;
+    scrollbar-width: thin;
+    scrollbar-color: #504776 transparent;
+  }
+
+  &__error {
+    margin: 17.5px 0 0;
+    font-size: 13.75px;
+    color: $color-hp;
+  }
+
+  &__footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 12.5px;
+    margin-top: 27.5px;
+
+    button {
+      height: 50px;
+      padding: 0 22.5px;
+      border: 1px solid $color-border-gold;
+      border-radius: 7.5px;
+      background: $color-bg-panel-alt;
+      color: $color-text-light;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+
+      &:hover:not(:disabled) {
+        border-color: $color-gold-bright;
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+  }
+
+  &__primary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    border: 0 !important;
+    background: linear-gradient(135deg, $color-red-bright, #e64972) !important;
+    color: #fff !important;
+
+    &:hover:not(:disabled) {
+      filter: brightness(1.08);
+    }
+  }
+
+  &__spinner {
+    animation: character-wizard-spin 0.8s linear infinite;
+  }
+}
+
+@keyframes character-wizard-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Estilos compartilhados pelos 3 steps (components/step-*) — vivem aqui
+// em vez de um style.scss por componente porque são a mesma "família"
+// visual (campos, cards de opção), igual ao .platform-modal em
+// pages/plataforma/style.scss.
+.wizard-step {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 8.75px;
+    font-size: 13.75px;
+    color: $color-text-muted;
+
+    input,
+    select,
+    textarea {
+      padding: 12.5px 16.25px;
+      border: 1px solid transparent;
+      border-radius: 7.5px;
+      outline: 0;
+      background: $color-bg-panel-alt;
+      color: $color-text-light;
+      font: inherit;
+      font-size: 16.25px;
+
+      &:focus {
+        border-color: $color-gold-bright;
+      }
+
+      &::placeholder {
+        color: #736c92;
+      }
+    }
+
+    textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+  }
+
+  // step-identity: características físicas + painel de imagem lado a
+  // lado (geração por IA, uma vez só, ou colar uma URL manualmente).
+  &__characteristics-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 250px;
+    gap: 17.5px;
+  }
+
+  &__characteristics-field textarea {
+    min-height: 120px;
+  }
+
+  &__character-image {
+    .wizard-step__secondary-choice {
+      width: 100%;
+      height: auto;
+      min-height: 52.5px;
+      padding: 10px 12.5px;
+      justify-content: center;
+      white-space: normal;
+      text-align: center;
+      line-height: 1.3;
+    }
+  }
+
+  &__character-image-preview {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 7.5px;
+  }
+
+  &__image-url-form {
+    display: flex;
+    gap: 7.5px;
+
+    input {
+      flex: 1;
+      min-width: 0;
+      padding: 10px 12.5px;
+      border: 1px solid transparent;
+      border-radius: 7.5px;
+      outline: 0;
+      background: $color-bg-panel-alt;
+      color: $color-text-light;
+      font: inherit;
+      font-size: 13.75px;
+
+      &:focus {
+        border-color: $color-gold-bright;
+      }
+
+      &::placeholder {
+        color: #736c92;
+      }
+    }
+
+    .wizard-step__secondary-choice {
+      height: auto;
+      padding: 0 12.5px;
+      font-size: 13.75px;
+    }
+  }
+
+  &__points {
+    font-size: 15px;
+    color: $color-text-muted;
+
+    strong {
+      color: $color-gold-bright;
+    }
+  }
+
+  // 19 atributos (ver ATTRIBUTE_KEYS em functions.ts) — 2 colunas pra
+  // não virar uma lista gigante de rolagem numa coluna só.
+  &__attribute-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  &__attribute-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 15px;
+    border-radius: 7.5px;
+    background: $color-bg-panel-alt;
+    font-size: 15px;
+    color: $color-text-light;
+  }
+
+  &__attribute-controls {
+    display: flex;
+    align-items: center;
+    gap: 12.5px;
+
+    button {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      border-radius: 50%;
+      background: $color-bg-panel-soft;
+      color: $color-text-light;
+      cursor: pointer;
+
+      &:hover:not(:disabled) {
+        background: $color-gold-bright;
+        color: #1a1633;
+      }
+
+      &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+    }
+
+    strong {
+      min-width: 22.5px;
+      text-align: center;
+      font-size: 16.25px;
+    }
+  }
+
+  &__section {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__section-title {
+    display: block;
+    margin-bottom: 5px;
+    color: $color-text-light;
+    font-size: 15px;
+    font-weight: 650;
+  }
+
+  &__hint {
+    margin: 0 0 12.5px;
+    color: $color-text-muted;
+    font-size: 13.75px;
+    line-height: 1.5;
+  }
+
+  &__talent-list,
+  &__option-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(187.5px, 1fr));
+    gap: 12.5px;
+  }
+
+  &__talent-card,
+  &__option-card {
+    position: relative;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 7.5px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: $color-bg-panel-alt;
+    cursor: pointer;
+    transition: border-color 0.18s ease, background-color 0.18s ease;
+
+    input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    strong {
+      color: $color-text-light;
+      font-size: 15px;
+    }
+
+    span {
+      color: $color-gold-bright;
+      font-size: 12.5px;
+    }
+
+    p {
+      margin: 0;
+      color: $color-text-muted;
+      font-size: 12.5px;
+      line-height: 1.45;
+    }
+
+    &:hover {
+      border-color: rgba(151, 220, 255, 0.35);
+    }
+
+    &.is-selected {
+      border-color: $color-gold-bright;
+      background: $color-bg-panel-soft;
+    }
+  }
+
+  &__option-image {
+    width: 100%;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 5px;
+  }
+
+  // Fallback enquanto `imageUrl` das cartas (varinha/núcleo/animal) não
+  // é preenchido — ver CardOption em functions.ts.
+  &__option-fallback-icon {
+    color: $color-gold-bright;
+    opacity: 0.6;
+  }
+
+  // step-identity: rolagem de HP inicial (1d20, mínimo HP_MINIMUM).
+  &__hp-roll {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+
+  &__hp-result {
+    color: $color-text-muted;
+    font-size: 15px;
+
+    strong {
+      color: $color-gold-bright;
+      font-size: 17.5px;
+    }
+  }
+
+  // step-house: menu (teste x escolha direta), resultado (escolhida ou
+  // sugerida pelo teste) e as perguntas do teste de seleção.
+  &--house {
+    align-items: center;
+    text-align: center;
+  }
+
+  &__house-menu {
+    display: flex;
+    gap: 15px;
+  }
+
+  &__primary-choice,
+  &__secondary-choice {
+    height: 52.5px;
+    padding: 0 22.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8.75px;
+    border-radius: 7.5px;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      filter: brightness(1.08);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  &__primary-choice {
+    border: 0;
+    background: linear-gradient(135deg, $color-red-bright, #e64972);
+    color: #fff;
+  }
+
+  &__secondary-choice {
+    border: 1px solid $color-border-gold;
+    background: $color-bg-panel-alt;
+    color: $color-text-light;
+  }
+
+  &__text-button {
+    align-self: center;
+    border: 0;
+    background: none;
+    color: $color-gold-bright;
+    font-size: 13.75px;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover {
+      color: $color-text-light;
+    }
+  }
+
+  &__house-result {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12.5px;
+
+    img {
+      width: 137.5px;
+      height: 137.5px;
+      object-fit: contain;
+    }
+
+    strong {
+      color: $color-text-light;
+      font-size: 20px;
+    }
+  }
+
+  // sorting-story: história narrada pela IA (Beco Diagonal) — feed tipo
+  // chat (fala do narrador vs. ação do jogador) + campo de texto livre.
+  &--sorting-story {
+    align-items: stretch;
+    text-align: left;
+  }
+
+  &__story-cancel {
+    align-self: flex-end;
+  }
+
+  &__story-feed {
+    max-height: 400px;
+    padding-right: 5px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12.5px;
+    scrollbar-width: thin;
+    scrollbar-color: #504776 transparent;
+  }
+
+  &__story-message {
+    margin: 0;
+    padding: 12.5px 15px;
+    max-width: 88%;
+    border-left: 2px solid $color-gold-bright;
+    background: $color-bg-panel-alt;
+    color: $color-text-light;
+    font-size: 15px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+
+    &--player {
+      align-self: flex-end;
+      border-left: 0;
+      border-right: 2px solid $color-red-bright;
+      background: $color-bg-panel-soft;
+    }
+
+    &--loading {
+      display: flex;
+      align-items: center;
+    }
+  }
+
+  &__story-form {
+    display: flex;
+    gap: 10px;
+
+    input {
+      flex: 1;
+      height: 52.5px;
+      padding: 0 16.25px;
+      border: 1px solid transparent;
+      border-radius: 7.5px;
+      outline: 0;
+      background: $color-bg-panel-alt;
+      color: $color-text-light;
+      font: inherit;
+      font-size: 16.25px;
+
+      &:focus {
+        border-color: $color-gold-bright;
+      }
+
+      &::placeholder {
+        color: #736c92;
+      }
+
+      &:disabled {
+        opacity: 0.6;
+      }
+    }
+
+    button {
+      height: 52.5px;
+      padding: 0 22.5px;
+      border: 0;
+      border-radius: 7.5px;
+      background: linear-gradient(135deg, $color-red-bright, #e64972);
+      color: #fff;
+      font: inherit;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+
+      &:hover:not(:disabled) {
+        filter: brightness(1.08);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+  }
+}

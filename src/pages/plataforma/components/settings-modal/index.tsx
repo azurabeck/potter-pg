@@ -15,11 +15,12 @@ import {
   Settings,
 } from "lucide-react";
 import { useAuth } from "@/context/auth";
-import { getNpcCharacters } from "@/actions/get/characters";
+import { useCharacter } from "@/context/character";
+import { getNpcs } from "@/actions/get/npcs";
 import { getAiPrompts, getAiProviderConfig } from "@/actions/get/settings";
 import { saveAiPrompts, saveAiProviderConfig } from "@/actions/sets/settings";
-import { EMPTY_AI_PROMPTS, EMPTY_AI_PROVIDER_CONFIG, type AiProvider, type Character } from "@/utils/types";
-import { isAiPromptsEmpty } from "../../functions";
+import { createInvite } from "@/actions/sets/invites";
+import { EMPTY_AI_PROMPTS, EMPTY_AI_PROVIDER_CONFIG, type AiProvider, type Npc } from "@/utils/types";
 import type { HistoryItem } from "../../functions";
 import "./style.scss";
 
@@ -27,6 +28,7 @@ const AI_PROVIDER_LABEL: Record<AiProvider, string> = {
   anthropic: "Anthropic (Claude)",
   openai: "OpenAI (GPT)",
   gemini: "Google (Gemini)",
+  grok: "xAI (Grok)",
 };
 
 interface SettingsModalProps {
@@ -43,14 +45,19 @@ interface SettingsModalProps {
  * fechar e um abrir de novo, exatamente como acontecia quando isso era
  * só um bloco de JSX condicional dentro do componente da página.
  */
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export default function SettingsModal({ isOpen, onClose, onAddPlayer, onRequireSetup }: SettingsModalProps) {
   const { user } = useAuth();
+  const { activeCharacter } = useCharacter();
   const [narratorMode, setNarratorMode] = useState<"ai" | "human">("ai");
   const [aiPlays, setAiPlays] = useState(false);
   const [selectedAiCharacter, setSelectedAiCharacter] = useState("");
-  const [npcCharacters, setNpcCharacters] = useState<Character[]>([]);
+  const [npcCharacters, setNpcCharacters] = useState<Npc[]>([]);
   const [playerInput, setPlayerInput] = useState("");
   const [players, setPlayers] = useState<string[]>([]);
+  const [invitingPlayer, setInvitingPlayer] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
   const [aiPrompts, setAiPrompts] = useState(EMPTY_AI_PROMPTS);
   const [aiProviderConfig, setAiProviderConfig] = useState(EMPTY_AI_PROVIDER_CONFIG);
   const [tokenVisible, setTokenVisible] = useState(false);
@@ -72,7 +79,10 @@ export default function SettingsModal({ isOpen, onClose, onAddPlayer, onRequireS
       setAiProviderConfig(providerConfig);
       if (!checkedInitialPrompts.current) {
         checkedInitialPrompts.current = true;
-        if (isAiPromptsEmpty(prompts) || !providerConfig.apiKey) onRequireSetup();
+        // As regras narrativas já têm um padrão embutido (ver
+        // services/ai_prompt_defaults.ts) — só falta mesmo o token pra
+        // narrar, os campos abaixo são só regras adicionais opcionais.
+        if (!providerConfig.apiKey) onRequireSetup();
       }
     });
 
@@ -85,7 +95,7 @@ export default function SettingsModal({ isOpen, onClose, onAddPlayer, onRequireS
     if (!isOpen || narratorMode !== "human" || !aiPlays) return;
 
     let cancelled = false;
-    getNpcCharacters()
+    getNpcs()
       .then((data) => {
         if (cancelled) return;
         setNpcCharacters(data);
@@ -98,13 +108,47 @@ export default function SettingsModal({ isOpen, onClose, onAddPlayer, onRequireS
     };
   }, [isOpen, narratorMode, aiPlays]);
 
-  function addPlayer(event: FormEvent<HTMLFormElement>) {
+  // Nome puro (sem @) só entra na lista visual da sessão, igual sempre
+  // funcionou. E-mail vira um convite de verdade (colecao "invites") —
+  // o convidado recebe o aviso no header e, ao aceitar, entra na mesa
+  // (aparece no roster de `tableCharacters`), mas narra com a própria
+  // configuração de IA — precisa configurar o próprio token aqui antes.
+  // `hostCharacterId` é o personagem ativo de quem está convidando; sem
+  // personagem ativo (não deveria acontecer — Plataforma já exige um pra
+  // existir) não dá pra convidar.
+  async function addPlayer(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const name = playerInput.trim();
-    if (!name || players.some((player) => player.toLowerCase() === name.toLowerCase())) return;
+    const value = playerInput.trim();
+    if (!value || players.some((player) => player.toLowerCase() === value.toLowerCase())) return;
 
-    setPlayers((current) => [...current, name]);
-    onAddPlayer({ id: crypto.randomUUID(), type: "join", user: name });
+    setInviteError(null);
+    let inviteId: string | undefined;
+
+    if (EMAIL_PATTERN.test(value)) {
+      if (!user || !activeCharacter) {
+        setInviteError("Não foi possível identificar sua conta/personagem pra montar o convite.");
+        return;
+      }
+
+      setInvitingPlayer(true);
+      try {
+        const hostName = activeCharacter.name?.trim() || user.email || "Alguém";
+        inviteId = await createInvite(user.uid, activeCharacter.id, hostName, value);
+      } catch (error) {
+        setInviteError(`Não foi possível enviar o convite: ${(error as Error).message}`);
+        return;
+      } finally {
+        setInvitingPlayer(false);
+      }
+    }
+
+    setPlayers((current) => [...current, value]);
+    onAddPlayer({
+      id: crypto.randomUUID(),
+      type: "join",
+      user: value,
+      ...(inviteId ? { inviteId, inviteStatus: "pending" } : {}),
+    });
     setPlayerInput("");
   }
 
@@ -293,68 +337,68 @@ export default function SettingsModal({ isOpen, onClose, onAddPlayer, onRequireS
                 <ScrollText size={16} />
                 <div>
                   <strong>Prompts da IA</strong>
-                  <span>Regras usadas em cada tipo de cena.</span>
+                  <span>Um padrão completo já é aplicado — o que você escrever aqui entra como regra adicional, sem substituir nada.</span>
                 </div>
               </div>
               <div className="platform-settings__prompt-grid">
                 <label className="platform-settings__field platform-settings__field--textarea">
                   <span>
-                    <ScrollText size={14} /> Regra de Narração
+                    <ScrollText size={14} /> Regra adicional de Narração
                   </span>
                   <textarea
                     value={aiPrompts.narration}
                     onChange={(event) =>
                       setAiPrompts((current) => ({ ...current, narration: event.target.value }))
                     }
-                    placeholder="Escreva a regra de narração..."
+                    placeholder="Regras extras, além do padrão (opcional)..."
                   />
                 </label>
                 <label className="platform-settings__field platform-settings__field--textarea">
                   <span>
-                    <Sword size={14} /> Regra de Batalha
+                    <Sword size={14} /> Regra adicional de Batalha
                   </span>
                   <textarea
                     value={aiPrompts.battle}
                     onChange={(event) =>
                       setAiPrompts((current) => ({ ...current, battle: event.target.value }))
                     }
-                    placeholder="Escreva a regra de batalha..."
+                    placeholder="Regras extras, além do padrão (opcional)..."
                   />
                 </label>
                 <label className="platform-settings__field platform-settings__field--textarea">
                   <span>
-                    <Dices size={14} /> Regra de Duelo
+                    <Dices size={14} /> Regra adicional de Duelo
                   </span>
                   <textarea
                     value={aiPrompts.duel}
                     onChange={(event) =>
                       setAiPrompts((current) => ({ ...current, duel: event.target.value }))
                     }
-                    placeholder="Escreva a regra de duelo..."
+                    placeholder="Regras extras, além do padrão (opcional)..."
                   />
                 </label>
                 <label className="platform-settings__field platform-settings__field--textarea">
                   <span>
-                    <Trophy size={14} /> Regra de Quadribol
+                    <Trophy size={14} /> Regra adicional de Quadribol
                   </span>
                   <textarea
                     value={aiPrompts.quidditch}
                     onChange={(event) =>
                       setAiPrompts((current) => ({ ...current, quidditch: event.target.value }))
                     }
-                    placeholder="Escreva a regra de quadribol..."
+                    placeholder="Regras extras, além do padrão (opcional)..."
                   />
                 </label>
                 <label className="platform-settings__field platform-settings__field--textarea">
                   <span>
-                    <DoorClosed size={14} /> Regra de Encerramento
+                    <DoorClosed size={14} /> Regra adicional de Encerramento
                   </span>
                   <textarea
                     value={aiPrompts.closing}
                     onChange={(event) =>
                       setAiPrompts((current) => ({ ...current, closing: event.target.value }))
                     }
-                    placeholder="Escreva a regra de encerramento..."
+                    placeholder="Regras extras, além do padrão (opcional)..."
                   />
                 </label>
               </div>
@@ -372,13 +416,18 @@ export default function SettingsModal({ isOpen, onClose, onAddPlayer, onRequireS
             <form className="platform-settings__add-player" onSubmit={addPlayer}>
               <input
                 value={playerInput}
-                onChange={(event) => setPlayerInput(event.target.value)}
+                onChange={(event) => {
+                  setPlayerInput(event.target.value);
+                  setInviteError(null);
+                }}
                 placeholder="Nome ou e-mail do player"
+                disabled={invitingPlayer}
               />
-              <button type="submit">
-                <UserPlus size={15} /> Adicionar
+              <button type="submit" disabled={invitingPlayer}>
+                <UserPlus size={15} /> {invitingPlayer ? "Convidando..." : "Adicionar"}
               </button>
             </form>
+            {inviteError && <p className="platform-modal__error">{inviteError}</p>}
             {players.length > 0 && (
               <div className="platform-settings__players">
                 {players.map((player) => (
@@ -387,7 +436,10 @@ export default function SettingsModal({ isOpen, onClose, onAddPlayer, onRequireS
               </div>
             )}
             <p className="platform-settings__hint">
-              Quando um player entrar, a ação será exibida no histórico da sessão.
+              Nomes (sem @) só aparecem na lista. E-mails viram um convite de
+              verdade: a pessoa recebe o aviso pra aceitar/rejeitar assim que
+              logar, e ao aceitar entra na mesa — mas narra com a própria
+              configuração de IA, precisa configurar o token dela aqui.
             </p>
           </section>
         </div>

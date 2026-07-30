@@ -17,9 +17,9 @@ import { onRequest } from "firebase-functions/v2/https";
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
-import { streamProvider, type AiProvider, type NarrateMessage } from "./providers.js";
+import { generateImage, streamProvider, type AiProvider, type NarrateMessage } from "./providers.js";
 
-const VALID_PROVIDERS: AiProvider[] = ["anthropic", "openai", "gemini"];
+const VALID_PROVIDERS: AiProvider[] = ["anthropic", "openai", "gemini", "grok"];
 
 initializeApp();
 const db = getFirestore();
@@ -96,5 +96,114 @@ export const narrate = onRequest({ cors: true }, async (req, res) => {
     } else {
       res.status(500).json({ error: message });
     }
+  }
+});
+
+// Mesmo protocolo de `narrate` (HTTP + streaming, auth via Bearer), mas
+// pra uma chamada de IA que não é da narração da sessão: a história do
+// teste de seleção de casa do wizard de criação de personagem
+// (pages/character-wizard). Diferença central: não lê token do Firestore
+// por usuário — usa a chave própria do projeto (GEMINI_KEY, carregada de
+// functions/.env pelo Functions Framework) porque é uma experiência do
+// app, não algo que dependa do usuário já ter configurado um provedor de
+// IA em Configurações (aliás, no momento em que o wizard roda, o usuário
+// nem tem personagem ainda).
+export const sortingNarrate = onRequest({ cors: true }, async (req, res) => {
+  if (req.method !== "POST") {
+    res.status(405).json({ error: "Method Not Allowed" });
+    return;
+  }
+
+  const authHeader = req.get("Authorization") ?? "";
+  const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : "";
+  if (!idToken) {
+    res.status(401).json({ error: "Faça login pra usar o teste de seleção." });
+    return;
+  }
+
+  try {
+    await getAuth().verifyIdToken(idToken);
+  } catch {
+    res.status(401).json({ error: "Sessão inválida. Faça login novamente." });
+    return;
+  }
+
+  const { systemPrompt, messages } = req.body as Partial<NarrateRequest>;
+  if (typeof systemPrompt !== "string" || !Array.isArray(messages)) {
+    res.status(400).json({ error: "systemPrompt e messages são obrigatórios." });
+    return;
+  }
+
+  const geminiKey = process.env.GEMINI_KEY;
+  if (!geminiKey) {
+    res.status(500).json({ error: "GEMINI_KEY não configurada nas variáveis de ambiente da function." });
+    return;
+  }
+
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache");
+
+  try {
+    await streamProvider("gemini", geminiKey, systemPrompt, messages, (chunk) => {
+      res.write(chunk);
+    });
+    res.end();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Erro ao chamar a IA.";
+    if (res.headersSent) {
+      res.write(`\n[ERRO: ${message}]`);
+      res.end();
+    } else {
+      res.status(500).json({ error: message });
+    }
+  }
+});
+
+interface GenerateImageRequest {
+  prompt: string;
+}
+
+// Gera o retrato do personagem (step 1 do wizard de criação — botão
+// "Gerar imagem do personagem"). Sem streaming (imagem não chega aos
+// pedaços como texto) — devolve `{ imageDataUrl }` de uma vez só, já
+// pronta pra usar num <img src>. Mesma GEMINI_KEY de `sortingNarrate`, e
+// pelo mesmo motivo (usuário ainda não tem personagem nesse ponto).
+export const generateCharacterImage = onRequest({ cors: true }, async (req, res) => {
+  if (req.method !== "POST") {
+    res.status(405).json({ error: "Method Not Allowed" });
+    return;
+  }
+
+  const authHeader = req.get("Authorization") ?? "";
+  const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : "";
+  if (!idToken) {
+    res.status(401).json({ error: "Faça login pra gerar a imagem do personagem." });
+    return;
+  }
+
+  try {
+    await getAuth().verifyIdToken(idToken);
+  } catch {
+    res.status(401).json({ error: "Sessão inválida. Faça login novamente." });
+    return;
+  }
+
+  const { prompt } = req.body as Partial<GenerateImageRequest>;
+  if (typeof prompt !== "string" || !prompt.trim()) {
+    res.status(400).json({ error: "prompt é obrigatório." });
+    return;
+  }
+
+  const geminiKey = process.env.GEMINI_KEY;
+  if (!geminiKey) {
+    res.status(500).json({ error: "GEMINI_KEY não configurada nas variáveis de ambiente da function." });
+    return;
+  }
+
+  try {
+    const imageDataUrl = await generateImage(geminiKey, prompt);
+    res.json({ imageDataUrl });
+  } catch (error) {
+    res.status(500).json({ error: error instanceof Error ? error.message : "Erro ao gerar a imagem." });
   }
 });

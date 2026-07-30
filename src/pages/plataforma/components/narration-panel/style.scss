@@ -10,18 +10,18 @@
 }
 
 .platform-page__empty-state {
-  max-width: 560px;
-  padding: 24px;
+  max-width: 700px;
+  padding: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 12.5px;
   color: #817991;
   text-align: center;
 
   p {
     margin: 0;
-    font-size: 12px;
+    font-size: 15px;
     line-height: 1.5;
 
     strong {
@@ -39,7 +39,7 @@
 .platform-page__narration-content {
   width: 100%;
   min-height: 100%;
-  padding: 18px;
+  padding: 22.5px;
   display: flex;
   align-items: flex-start;
   justify-content: stretch;
@@ -48,26 +48,51 @@
 .platform-page__narration-feed {
   width: 100%;
   display: grid;
-  gap: 10px;
+  gap: 12.5px;
+}
+
+.platform-page__regenerate-button {
+  justify-self: start;
+  padding: 7.5px 15px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8.75px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #a99cff;
+  background: rgba(255, 255, 255, 0.035);
+  font: inherit;
+  font-size: 13.75px;
+  cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease, opacity 0.18s ease;
+
+  &:hover:not(:disabled) {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.07);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
 
 .platform-narration-message {
   max-width: 78%;
-  padding: 12px 14px;
+  padding: 15px 17.5px;
   background: rgba(255, 255, 255, 0.035);
   border-left: 2px solid #6655c7;
 
   strong {
     display: block;
     color: #a99cff;
-    font-size: 10px;
+    font-size: 12.5px;
     font-weight: 500;
   }
 
   p {
-    margin: 5px 0 0;
+    margin: 6.25px 0 0;
     color: #dfdbea;
-    font-size: 12px;
+    font-size: 15px;
     line-height: 1.55;
     white-space: pre-wrap;
   }

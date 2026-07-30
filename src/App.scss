@@ -2,7 +2,7 @@
 
 .app-shell {
   display: grid;
-  grid-template-columns: var(--sidebar-width, 192px) minmax(0, 1fr) 270px;
+  grid-template-columns: var(--sidebar-width, 240px) minmax(0, 1fr) 337.5px;
   width: 100%;
   height: 100vh;
   min-height: 0;
@@ -17,10 +17,26 @@
   }
 
   @media (max-width: 1050px) {
-    grid-template-columns: var(--sidebar-width, 170px) minmax(0, 1fr);
+    grid-template-columns: var(--sidebar-width, 212.5px) minmax(0, 1fr);
   }
 
   @media (max-width: 720px) {
-    grid-template-columns: 72px minmax(0, 1fr);
+    grid-template-columns: 90px minmax(0, 1fr);
+  }
+
+  // Sem CharacterPanel (ex.: pages/personagens, que já é a própria "folha"
+  // do personagem) a 3ª coluna fica sem conteúdo — sem isso o grid ainda
+  // reservaria 337.5px vazios à direita. Vem depois dos media queries acima
+  // (mesma especificidade, precisa vencer na cascata nesses breakpoints).
+  &--no-panel {
+    grid-template-columns: var(--sidebar-width, 240px) minmax(0, 1fr);
+
+    @media (max-width: 1050px) {
+      grid-template-columns: var(--sidebar-width, 212.5px) minmax(0, 1fr);
+    }
+
+    @media (max-width: 720px) {
+      grid-template-columns: 90px minmax(0, 1fr);
+    }
   }
 }

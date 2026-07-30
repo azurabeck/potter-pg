@@ -1,0 +1,96 @@
+@use "@/assets/styles/variables" as *;
+
+.item-detail-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 30px;
+  background: rgba(9, 7, 24, 0.74);
+  backdrop-filter: blur(4px);
+
+  &__panel {
+    position: relative;
+    width: min(550px, 100%);
+    padding: 35px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: $color-bg-panel-alt;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+    color: #fff;
+  }
+
+  &__close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    color: #bcb5d6;
+    background: transparent;
+    cursor: pointer;
+
+    &:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.08);
+    }
+  }
+
+  &__header {
+    padding-right: 35px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+
+    h2 {
+      margin: 0;
+      font-size: 21.25px;
+      font-weight: 500;
+    }
+  }
+
+  &__icon {
+    width: 47.5px;
+    height: 47.5px;
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: rgba(151, 220, 255, 0.14);
+    color: $color-gold;
+  }
+
+  &__fields {
+    margin: 27.5px 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 17.5px 22.5px;
+
+    > div {
+      min-width: 0;
+    }
+
+    dt {
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 11.88px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    dd {
+      margin: 5px 0 0;
+      color: #fff;
+      font-size: 15.62px;
+      line-height: 1.5;
+    }
+  }
+
+  &__field--wide {
+    grid-column: 1 / -1;
+  }
+}

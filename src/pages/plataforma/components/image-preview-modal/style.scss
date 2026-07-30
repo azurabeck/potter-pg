@@ -9,8 +9,8 @@
 
 .platform-modal__image-panel {
   position: relative;
-  width: min(1040px, 92vw);
-  height: min(760px, 88vh);
+  width: min(1300px, 92vw);
+  height: min(950px, 88vh);
   display: grid;
   place-items: center;
 
@@ -24,7 +24,7 @@
 }
 
 .platform-modal__close--image {
-  top: -42px;
+  top: -52.5px;
   right: 0;
   color: #fff;
   background: rgba(255, 255, 255, 0.08);

@@ -1,19 +1,23 @@
 import { useEffect, useRef, useState } from "react";
-import { GripHorizontal, Pin, PinOff, User, X } from "lucide-react";
+import { Footprints, GripHorizontal, Pin, PinOff, User, UserMinus, X } from "lucide-react";
 import { CURRENT_CHARACTER_STUB } from "@/services/genene_settings";
 import { useCharacter } from "@/context/character";
-import { cx, initials } from "@/utils";
-import {
-  formatAttributeLabel,
-  getAttributeIcon,
-  progressPercent,
-  progressValue,
-  type CharacterWithProgress,
-} from "./functions";
+import { cx, formatAttributeLabel, getAttributeIcon, initials, resolveCharacterMoney } from "@/utils";
+import { progressPercent, progressValue, type CharacterWithProgress } from "./functions";
 import "./style.scss";
 
 export default function CharacterPanel() {
-  const { activeCharacter, characters, selectCharacter, sheetVisible, showSheet, hideSheet } = useCharacter();
+  const {
+    activeCharacter,
+    characters,
+    selectCharacter,
+    sheetVisible,
+    showSheet,
+    hideSheet,
+    tableCharacters,
+    setEncounterTarget,
+    isUserOnline,
+  } = useCharacter();
   const [attributesOpen, setAttributesOpen] = useState(false);
   const [attributesPinned, setAttributesPinned] = useState(false);
   const [panelPosition, setPanelPosition] = useState({ x: 0, y: 0 });
@@ -24,10 +28,10 @@ export default function CharacterPanel() {
     function handlePointerMove(event: PointerEvent) {
       if (!draggingRef.current || !attributesPinned) return;
 
-      const panelWidth = 300;
-      const panelHeight = 360;
-      const maxX = Math.max(8, window.innerWidth - panelWidth - 8);
-      const maxY = Math.max(8, window.innerHeight - panelHeight - 8);
+      const panelWidth = 375;
+      const panelHeight = 450;
+      const maxX = Math.max(10, window.innerWidth - panelWidth - 10);
+      const maxY = Math.max(10, window.innerHeight - panelHeight - 10);
 
       setPanelPosition({
         x: Math.min(maxX, Math.max(8, event.clientX - dragOffsetRef.current.x)),
@@ -55,8 +59,8 @@ export default function CharacterPanel() {
   function togglePinned() {
     if (!attributesPinned) {
       setPanelPosition({
-        x: Math.max(12, window.innerWidth - 330),
-        y: Math.max(12, Math.min(window.innerHeight - 390, 110)),
+        x: Math.max(15, window.innerWidth - 412.5),
+        y: Math.max(15, Math.min(window.innerHeight - 487.5, 137.5)),
       });
     }
     setAttributesPinned((current) => !current);
@@ -78,19 +82,11 @@ export default function CharacterPanel() {
   const xp = progressValue(characterProgress?.xp, CURRENT_CHARACTER_STUB.xp);
   const level = characterProgress?.nivel_geral ?? CURRENT_CHARACTER_STUB.nivel_geral;
 
+  const resolvedMoney = resolveCharacterMoney(activeCharacter);
   const money = {
-    galeoes:
-      activeCharacter?.dinheiro?.galeoes ??
-      activeCharacter?.inventario?.goldens ??
-      CURRENT_CHARACTER_STUB.moedas.galeoes,
-    sicles:
-      activeCharacter?.dinheiro?.sicles ??
-      activeCharacter?.inventario?.sicles ??
-      CURRENT_CHARACTER_STUB.moedas.sicles,
-    nuques:
-      activeCharacter?.dinheiro?.nuques ??
-      activeCharacter?.inventario?.nuquens ??
-      CURRENT_CHARACTER_STUB.moedas.nuques,
+    galeoes: resolvedMoney?.galeoes ?? CURRENT_CHARACTER_STUB.moedas.galeoes,
+    sicles: resolvedMoney?.sicles ?? CURRENT_CHARACTER_STUB.moedas.sicles,
+    nuques: resolvedMoney?.nuques ?? CURRENT_CHARACTER_STUB.moedas.nuques,
   };
 
   const fallbackAttributes: Record<string, number> = {
@@ -148,7 +144,57 @@ export default function CharacterPanel() {
         </button>
 
         <section className="character-panel__portrait-card">
-        {imageUrl ? (
+        {tableCharacters.length > 0 ? (
+          <ul className="character-panel__roster" aria-label="Personagens na mesa">
+            {[...(activeCharacter ? [activeCharacter] : []), ...tableCharacters].map((character) => {
+              const isSelf = character.id === activeCharacter?.id;
+              const rosterImage = character.image_url ?? character.image_url_ano_1;
+
+              return (
+                <li key={character.id} className="character-panel__roster-item">
+                  <div className="character-panel__roster-portrait">
+                    {rosterImage ? (
+                      <img src={rosterImage} alt="" />
+                    ) : (
+                      <span className="character-panel__roster-fallback" aria-hidden="true">
+                        {initials(character.name)}
+                      </span>
+                    )}
+                    <span
+                      className={cx(
+                        "character-panel__roster-status",
+                        isUserOnline(character.user_id) && "character-panel__roster-status--online"
+                      )}
+                      aria-hidden="true"
+                    />
+                  </div>
+                  <span className="character-panel__roster-name">{character.name}</span>
+                  {!isSelf && (
+                    <div className="character-panel__roster-actions">
+                      <button
+                        type="button"
+                        className="character-panel__roster-remove"
+                        aria-label={`Remover ${character.name} da mesa`}
+                        title="Remover da mesa"
+                      >
+                        <UserMinus size={12} strokeWidth={1.8} />
+                      </button>
+                      <button
+                        type="button"
+                        className="character-panel__roster-goto"
+                        aria-label={`Ir até ${character.name}`}
+                        title="Ir até"
+                        onClick={() => setEncounterTarget(character)}
+                      >
+                        <Footprints size={12} strokeWidth={1.8} />
+                      </button>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        ) : imageUrl ? (
           <img src={imageUrl} alt={name} />
         ) : (
           <div className="character-panel__portrait-fallback" aria-label={name}>

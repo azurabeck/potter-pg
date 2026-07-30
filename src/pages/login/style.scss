@@ -4,16 +4,16 @@
   min-height: 100vh;
   display: grid;
   place-items: center;
-  padding: 24px;
+  padding: 30px;
   background: radial-gradient(circle at 20% 10%, rgba(143, 124, 255, 0.2), transparent 30%),
     linear-gradient(135deg, #17132f, #221d45);
 
   &__card {
     width: 100%;
-    max-width: 390px;
-    padding: 34px 30px;
+    max-width: 487.5px;
+    padding: 42.5px 37.5px;
     border: 1px solid $color-border-gold;
-    border-radius: 12px;
+    border-radius: 15px;
     background: rgba(36, 32, 68, 0.96);
     box-shadow: 0 28px 70px rgba(7, 5, 24, 0.4);
   }
@@ -22,48 +22,48 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    margin-bottom: 22px;
+    gap: 12.5px;
+    margin-bottom: 27.5px;
     color: $color-text-light;
-    font-size: 16px;
+    font-size: 20px;
     font-weight: 700;
   }
 
   &__brand-icon {
-    width: 27px;
-    height: 27px;
+    width: 33.75px;
+    height: 33.75px;
     color: $color-red-bright;
   }
 
   &__title {
     text-align: center;
-    font-size: 20px;
+    font-size: 25px;
     font-weight: 650;
-    margin-bottom: 25px;
+    margin-bottom: 31.25px;
   }
 
   &__form {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 18.75px;
   }
 
   &__field {
     display: flex;
     flex-direction: column;
-    gap: 7px;
-    font-size: 11px;
+    gap: 8.75px;
+    font-size: 13.75px;
     color: $color-text-muted;
 
     input {
-      height: 42px;
-      padding: 0 13px;
+      height: 52.5px;
+      padding: 0 16.25px;
       border: 1px solid transparent;
-      border-radius: 6px;
+      border-radius: 7.5px;
       outline: 0;
       background: $color-bg-panel-alt;
       color: $color-text-light;
-      font-size: 13px;
+      font-size: 16.25px;
 
       &:focus {
         border-color: $color-gold-bright;
@@ -81,16 +81,16 @@
 
   &__error {
     margin: 0;
-    font-size: 11px;
+    font-size: 13.75px;
     color: $color-hp;
   }
 
   &__submit,
   &__google {
     width: 100%;
-    height: 42px;
-    border-radius: 6px;
-    font-size: 12px;
+    height: 52.5px;
+    border-radius: 7.5px;
+    font-size: 15px;
     font-weight: 650;
   }
 
@@ -98,8 +98,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    margin-top: 3px;
+    gap: 10px;
+    margin-top: 3.75px;
     border: 0;
     background: linear-gradient(135deg, $color-red-bright, #e64972);
     color: #fff;
@@ -132,32 +132,32 @@
   &__divider {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin: 20px 0;
+    gap: 15px;
+    margin: 25px 0;
     color: $color-text-muted;
-    font-size: 9px;
+    font-size: 11.25px;
     text-transform: uppercase;
 
     &::before,
     &::after {
       content: "";
       flex: 1;
-      height: 1px;
+      height: 1.25px;
       background: $color-border-gold;
     }
   }
 
   &__toggle {
-    margin: 20px 0 0;
+    margin: 25px 0 0;
     text-align: center;
-    font-size: 11px;
+    font-size: 13.75px;
     color: $color-text-muted;
 
     button {
       border: 0;
       background: none;
       color: $color-gold-bright;
-      font-size: 11px;
+      font-size: 13.75px;
       font-weight: 600;
     }
   }

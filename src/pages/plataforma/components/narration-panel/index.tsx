@@ -1,10 +1,12 @@
 import { useEffect, useRef } from "react";
-import { Sparkles } from "lucide-react";
+import { RefreshCw, Sparkles } from "lucide-react";
 import type { NarrationMessage } from "../../functions";
 import "./style.scss";
 
 interface NarrationPanelProps {
   messages: NarrationMessage[];
+  onRegenerateLast?: () => void;
+  regenerating?: boolean;
 }
 
 /**
@@ -12,8 +14,10 @@ interface NarrationPanelProps {
  * via MutationObserver (não depende de `messages` como dependência de
  * efeito) e rola pro fim sempre que o conteúdo muda.
  */
-export default function NarrationPanel({ messages }: NarrationPanelProps) {
+export default function NarrationPanel({ messages, onRegenerateLast, regenerating }: NarrationPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const lastMessage = messages[messages.length - 1];
+  const canRegenerate = Boolean(onRegenerateLast) && lastMessage?.user === "Narrador";
 
   useEffect(() => {
     const container = scrollRef.current;
@@ -50,6 +54,19 @@ export default function NarrationPanel({ messages }: NarrationPanelProps) {
                 <p>{message.text}</p>
               </article>
             ))}
+            {canRegenerate && (
+              <button
+                type="button"
+                className="platform-page__regenerate-button"
+                onClick={onRegenerateLast}
+                disabled={regenerating}
+                aria-label="Refazer a última resposta do narrador"
+                title="Refazer a última resposta do narrador"
+              >
+                <RefreshCw size={13} className={regenerating ? "platform-page__spinner" : undefined} />
+                Refazer última resposta
+              </button>
+            )}
           </div>
         )}
       </div>

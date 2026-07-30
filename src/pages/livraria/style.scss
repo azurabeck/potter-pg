@@ -1,0 +1,98 @@
+@use "@/assets/styles/variables" as *;
+
+.livraria-page {
+  height: 100%;
+  min-height: 0;
+  padding: 23.75px 20px 17.5px 27.5px;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+
+  &__heading {
+    flex-shrink: 0;
+
+    h1 {
+      margin: 0;
+      color: #fff;
+      font-size: 26.25px;
+      line-height: 1;
+      font-weight: 400;
+    }
+
+    p {
+      margin: 10px 0 0;
+      color: $color-text-muted;
+      font-size: 15px;
+    }
+  }
+
+  &__shelf {
+    margin-top: 50px;
+    padding-bottom: 27.5px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 35px;
+    border-bottom: 10px solid #4a3f26;
+  }
+
+  &__book {
+    width: 185px;
+    height: 270px;
+    padding: 22.5px 17.5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12.5px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-top: 3px solid rgb(var(--book-accent-rgb));
+    border-radius: 3.75px 3.75px 10px 10px;
+    background: linear-gradient(160deg, rgba(var(--book-accent-rgb), 0.22), transparent 55%), $color-bg-panel-alt;
+    box-shadow: 0 14px 26px rgba(0, 0, 0, 0.35);
+    color: inherit;
+    font: inherit;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+    &:hover,
+    &:focus-visible {
+      transform: translateY(-10px) rotate(-1.5deg);
+      box-shadow: 0 22px 34px rgba(0, 0, 0, 0.45);
+      outline: none;
+    }
+  }
+
+  &__book-icon {
+    width: 55px;
+    height: 55px;
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: rgba(var(--book-accent-rgb), 0.16);
+    color: rgb(var(--book-accent-rgb));
+  }
+
+  &__book-title {
+    color: #fff;
+    font-size: 16.25px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  &__book-author {
+    margin-top: auto;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 12.5px;
+    font-style: italic;
+  }
+
+  @media (max-width: 720px) {
+    padding-inline: 17.5px;
+
+    &__shelf {
+      justify-content: center;
+    }
+  }
+}

@@ -30,3 +30,25 @@ export async function getRecentCampaigns(characterId: string, count: number): Pr
   const snapshot = await getDocs(q);
   return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Campaign).reverse();
 }
+
+/**
+ * Busca TODAS as campanhas de um personagem, sem limite — usado por
+ * `pages/sessoes` (histórico completo, agrupado por `campaign_year`),
+ * diferente de `getRecentCampaigns` (só as N mais recentes, pro
+ * contexto que a IA recebe pra narrar).
+ *
+ * Sem `orderBy` na query (só o filtro por `character_id`, que já tem
+ * índice automático de campo único) — ordena por `order` em JS depois
+ * de buscar. Como aqui não há `limit()`, não tem vantagem em empurrar a
+ * ordenação pro Firestore, e isso evita precisar de mais um índice
+ * composto além do que `getRecentCampaigns` já exige.
+ */
+export async function getAllCampaigns(characterId: string): Promise<Campaign[]> {
+  const campaignsRef = collection(db, COLLECTIONS.CAMPAIGNS);
+  const q = query(campaignsRef, where("character_id", "==", characterId));
+
+  const snapshot = await getDocs(q);
+  return snapshot.docs
+    .map((doc) => ({ id: doc.id, ...doc.data() }) as Campaign)
+    .sort((a, b) => a.order - b.order);
+}

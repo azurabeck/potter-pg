@@ -1,0 +1,74 @@
+@use "@/assets/styles/variables" as *;
+
+.filter-bar {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(225px, 1fr) 42.5px;
+  gap: 10px;
+  width: min(100%, 487.5px);
+
+  &__search {
+    height: 35px;
+    display: flex;
+    align-items: center;
+    gap: 12.5px;
+    padding: 0 15px;
+    background: $color-bg-panel-alt;
+    color: #d0ccdd;
+
+    input {
+      width: 100%;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: #fff;
+      font-size: 10px;
+
+      &::placeholder {
+        color: #d0ccdd;
+        opacity: 0.8;
+      }
+    }
+  }
+
+  &__toggle {
+    width: 42.5px;
+    height: 35px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    background: $color-bg-panel-alt;
+    color: #d0ccdd;
+
+    &:hover {
+      color: $color-border-gold-strong;
+    }
+  }
+
+  &__options {
+    position: absolute;
+    z-index: 20;
+    top: 45px;
+    right: 0;
+    width: 100%;
+    padding: 12.5px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    background: $color-bg-panel;
+    border: 1px solid rgba(151, 220, 255, 0.18);
+    box-shadow: 0 16px 34px rgba(12, 9, 30, 0.3);
+
+    select {
+      min-width: 0;
+      height: 37.5px;
+      padding: 0 10px;
+      border: 1px solid rgba(151, 220, 255, 0.14);
+      border-radius: 0;
+      outline: 0;
+      background: $color-bg-panel-alt;
+      color: #d0ccdd;
+      font-size: 10px;
+    }
+  }
+}
