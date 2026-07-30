@@ -1,7 +1,10 @@
 import { useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
-import { Dices, ImagePlus, Loader2 } from "lucide-react";
+import { Dices, ImagePlus, Images } from "lucide-react";
 import { generateCharacterImage } from "@/actions/ai/generate-character-image";
+import { uploadCharacterImage } from "@/actions/media/upload-character-image";
 import { buildCharacterImagePrompt, effectiveHp, HP_MINIMUM, rollHp, type WizardState } from "../../functions";
+import GeneratedImageModal from "./generated-image-modal";
+import ExistingImageModal from "./existing-image-modal";
 
 interface StepIdentityProps {
   state: WizardState;
@@ -12,6 +15,11 @@ export default function StepIdentity({ state, onChange }: StepIdentityProps) {
   const hp = effectiveHp(state.hpRoll);
   const [generating, setGenerating] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
+  const [showGeneratedModal, setShowGeneratedModal] = useState(false);
+
+  const [showExistingModal, setShowExistingModal] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [urlInput, setUrlInput] = useState("");
   const [urlError, setUrlError] = useState<string | null>(null);
 
@@ -23,6 +31,7 @@ export default function StepIdentity({ state, onChange }: StepIdentityProps) {
     if (generating || state.imageGenerated || !state.caracteristicasFisicas.trim()) return;
     setGenerating(true);
     setImageError(null);
+    setShowGeneratedModal(true);
     try {
       const imageUrl = await generateCharacterImage(buildCharacterImagePrompt(state));
       onChange((current) => ({ ...current, imageUrl, imageGenerated: true }));
@@ -30,6 +39,27 @@ export default function StepIdentity({ state, onChange }: StepIdentityProps) {
       setImageError((err as Error).message);
     } finally {
       setGenerating(false);
+    }
+  }
+
+  function openExistingModal() {
+    setUploadError(null);
+    setUrlInput("");
+    setUrlError(null);
+    setShowExistingModal(true);
+  }
+
+  async function handleFileSelected(file: File) {
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const imageUrl = await uploadCharacterImage(file);
+      onChange((current) => ({ ...current, imageUrl }));
+      setShowExistingModal(false);
+    } catch (err) {
+      setUploadError((err as Error).message);
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -49,6 +79,7 @@ export default function StepIdentity({ state, onChange }: StepIdentityProps) {
     setUrlError(null);
     onChange((current) => ({ ...current, imageUrl: trimmed }));
     setUrlInput("");
+    setShowExistingModal(false);
   }
 
   return (
@@ -114,25 +145,14 @@ export default function StepIdentity({ state, onChange }: StepIdentityProps) {
                   : undefined
             }
           >
-            {generating ? <Loader2 size={14} className="character-wizard-page__spinner" /> : <ImagePlus size={14} />}
-            {state.imageGenerated ? "Imagem gerada" : "Gerar imagem do personagem"}
+            <ImagePlus size={14} />
+            {state.imageGenerated ? "Imagem gerada" : "Gerar imagem"}
           </button>
-          {imageError && <p className="character-wizard-page__error">{imageError}</p>}
 
-          <form className="wizard-step__image-url-form" onSubmit={useManualUrl}>
-            <input
-              value={urlInput}
-              onChange={(event) => {
-                setUrlInput(event.target.value);
-                setUrlError(null);
-              }}
-              placeholder="ou cole o link de uma imagem"
-            />
-            <button type="submit" className="wizard-step__secondary-choice" disabled={!urlInput.trim()}>
-              Usar
-            </button>
-          </form>
-          {urlError && <p className="character-wizard-page__error">{urlError}</p>}
+          <button type="button" className="wizard-step__secondary-choice" onClick={openExistingModal}>
+            <Images size={14} />
+            Usar imagem existente
+          </button>
         </div>
       </div>
 
@@ -144,6 +164,31 @@ export default function StepIdentity({ state, onChange }: StepIdentityProps) {
           placeholder="De onde seu personagem vem? O que trouxe ele até Hogwarts?"
         />
       </label>
+
+      {showGeneratedModal && (
+        <GeneratedImageModal
+          imageUrl={state.imageUrl}
+          generating={generating}
+          error={imageError}
+          onClose={() => setShowGeneratedModal(false)}
+        />
+      )}
+
+      {showExistingModal && (
+        <ExistingImageModal
+          urlInput={urlInput}
+          urlError={urlError}
+          uploading={uploading}
+          uploadError={uploadError}
+          onUrlChange={(value) => {
+            setUrlInput(value);
+            setUrlError(null);
+          }}
+          onUrlSubmit={useManualUrl}
+          onFileSelected={handleFileSelected}
+          onClose={() => setShowExistingModal(false)}
+        />
+      )}
     </div>
   );
 }
