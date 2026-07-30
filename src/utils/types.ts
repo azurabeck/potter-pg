@@ -460,11 +460,14 @@ export interface TablePlayer {
 
 // Documento da colecao "tables" — id do documento == hostUserId (mesmo
 // anfitrião que ancora convites/encontros, ver TableInvite acima). Um só
-// documento por mesa, criado sob demanda na primeira vez que alguém
-// ganha ponto pra casa (ver actions/sets/table.ts, addHousePoints) — não
-// existe fluxo de criação manual. Os totais por casa (pra Taça das
-// Casas, ver pages/personagens) são sempre CALCULADOS a partir de
-// `players` (agrupando pela `casa` do personagem, buscada em
+// documento por mesa, criado sob demanda (nunca por uma tela de criação
+// manual) na primeira vez que faz falta: o anfitrião convida o primeiro
+// player (`ensureTableExists`, chamado por `createInvite` em
+// actions/sets/invites.ts) ou, se isso ainda não tiver acontecido por
+// algum motivo, quando alguém ganha o primeiro ponto pra casa
+// (`addHousePoints`, actions/sets/table.ts). Os totais por casa (pra
+// Taça das Casas, ver pages/personagens) são sempre CALCULADOS a partir
+// de `players` (agrupando pela `casa` do personagem, buscada em
 // "characters"), nunca guardados prontos aqui — assim não existe um
 // segundo lugar pra sincronizar toda vez que um ponto muda.
 export interface Table {
