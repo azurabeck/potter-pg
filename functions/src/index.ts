@@ -209,7 +209,7 @@ export const generateCharacterImage = onRequest({ cors: true }, async (req, res)
 
   try {
     const { mimeType, base64Data } = await generateImage(geminiKey, prompt);
-    const imageUrl = await uploadCharacterImage(uid, mimeType, base64Data);
+    const imageUrl = await saveImageToStorage(uid, mimeType, base64Data);
     res.json({ imageUrl });
   } catch (error) {
     res.status(500).json({ error: error instanceof Error ? error.message : "Erro ao gerar a imagem." });
@@ -222,7 +222,7 @@ export const generateCharacterImage = onRequest({ cors: true }, async (req, res)
 // `?alt=media&token=...` na URL) em vez de `file.makePublic()` — buckets
 // novos do Firebase Storage vêm com Uniform Bucket-Level Access ligado, que
 // bloqueia ACL por objeto, então `makePublic()` falharia.
-async function uploadCharacterImage(uid: string, mimeType: string, base64Data: string): Promise<string> {
+async function saveImageToStorage(uid: string, mimeType: string, base64Data: string): Promise<string> {
   const extension = mimeType.split("/")[1]?.split("+")[0] ?? "png";
   const filePath = `character-images/${uid}/${Date.now()}.${extension}`;
   const downloadToken = randomUUID();
@@ -238,3 +238,61 @@ async function uploadCharacterImage(uid: string, mimeType: string, base64Data: s
 
   return `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${downloadToken}`;
 }
+
+const ALLOWED_UPLOAD_MIME_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+// ~6MB decodido (base64 é ~33% maior que o binário original) — generoso
+// pra fotos de retrato, curto o bastante pra não virar vetor de abuso.
+const MAX_UPLOAD_BASE64_LENGTH = 8_000_000;
+
+interface UploadImageRequest {
+  imageBase64: string;
+  mimeType: string;
+}
+
+// Sobe uma imagem escolhida pelo próprio jogador (botão "Usar imagem
+// existente" no step 1 do wizard — upload de arquivo, não geração por IA)
+// pro Storage do projeto, mesmo esquema de `generateCharacterImage`. Existe
+// pra evitar guardar o arquivo como data URL direto no Firestore (mesmo
+// problema de limite de 1MiB que motivou o upload da imagem gerada).
+export const uploadCharacterImage = onRequest({ cors: true }, async (req, res) => {
+  if (req.method !== "POST") {
+    res.status(405).json({ error: "Method Not Allowed" });
+    return;
+  }
+
+  const authHeader = req.get("Authorization") ?? "";
+  const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : "";
+  if (!idToken) {
+    res.status(401).json({ error: "Faça login pra enviar uma imagem." });
+    return;
+  }
+
+  let uid: string;
+  try {
+    uid = (await getAuth().verifyIdToken(idToken)).uid;
+  } catch {
+    res.status(401).json({ error: "Sessão inválida. Faça login novamente." });
+    return;
+  }
+
+  const { imageBase64, mimeType } = req.body as Partial<UploadImageRequest>;
+  if (typeof imageBase64 !== "string" || !imageBase64.trim() || typeof mimeType !== "string") {
+    res.status(400).json({ error: "imageBase64 e mimeType são obrigatórios." });
+    return;
+  }
+  if (!ALLOWED_UPLOAD_MIME_TYPES.includes(mimeType)) {
+    res.status(400).json({ error: "Formato de imagem não suportado. Use PNG, JPEG, WEBP ou GIF." });
+    return;
+  }
+  if (imageBase64.length > MAX_UPLOAD_BASE64_LENGTH) {
+    res.status(400).json({ error: "Imagem muito grande. Escolha um arquivo menor." });
+    return;
+  }
+
+  try {
+    const imageUrl = await saveImageToStorage(uid, mimeType, imageBase64);
+    res.json({ imageUrl });
+  } catch (error) {
+    res.status(500).json({ error: error instanceof Error ? error.message : "Erro ao enviar a imagem." });
+  }
+});
