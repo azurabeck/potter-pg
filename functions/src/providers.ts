@@ -30,11 +30,9 @@ const DEFAULT_MODEL: Record<AiProvider, string> = {
 };
 
 // Modelo de geracao de imagem do Gemini (retrato do personagem no wizard
-// de criacao — ver generateCharacterImage em index.ts). Nome de modelo
-// nao verificado contra a API de verdade (sem acesso pra testar) — se a
-// chamada falhar com "model not found" ou parecido, esse e o primeiro
-// lugar pra conferir/trocar.
-const IMAGE_MODEL = "gemini-3.5-flash-image";
+// de criacao — ver generateCharacterImage em index.ts). Verificado contra
+// GET /v1beta/models em 2026-07-30.
+const IMAGE_MODEL = "gemini-3.1-flash-image";
 
 // Gera uma imagem a partir de um prompt de texto e devolve como data URL
 // (base64 inline) — sem upload pra Storage, o client guarda essa string
