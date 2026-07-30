@@ -163,6 +163,88 @@
   }
 }
 
+// Modais do painel de imagem em step-identity (gerar por IA / usar imagem
+// existente) — mesmo padrão de overlay+painel de .relacoes-modal.
+.wizard-image-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  background: rgba(8, 6, 26, 0.82);
+  backdrop-filter: blur(8px);
+
+  &__panel {
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+    max-height: 86vh;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 27.5px;
+    overflow-y: auto;
+    border: 1px solid $color-border-gold;
+    border-radius: 15px;
+    background: rgba(36, 32, 68, 0.98);
+    box-shadow: 0 24px 48px rgba(12, 9, 30, 0.4);
+  }
+
+  &__close {
+    position: absolute;
+    top: 17.5px;
+    right: 17.5px;
+    border: 0;
+    background: none;
+    color: $color-text-muted;
+    cursor: pointer;
+
+    &:hover {
+      color: $color-text-light;
+    }
+  }
+
+  &__title {
+    margin: 0 22.5px 0 0;
+    color: $color-text-light;
+    font-size: 17.5px;
+    font-weight: 650;
+  }
+
+  &__status {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12.5px;
+    padding: 20px 0;
+    color: $color-text-muted;
+    font-size: 15px;
+    text-align: center;
+  }
+
+  &__image {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 7.5px;
+  }
+
+  &__section {
+    display: flex;
+    flex-direction: column;
+    gap: 8.75px;
+  }
+
+  &__divider {
+    align-self: center;
+    color: $color-text-muted;
+    font-size: 12.5px;
+    text-transform: uppercase;
+  }
+}
+
 // Estilos compartilhados pelos 3 steps (components/step-*) — vivem aqui
 // em vez de um style.scss por componente porque são a mesma "família"
 // visual (campos, cards de opção), igual ao .platform-modal em
