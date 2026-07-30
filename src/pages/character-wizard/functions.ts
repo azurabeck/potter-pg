@@ -397,6 +397,7 @@ export function buildCharacterImagePrompt(state: WizardState): string {
   const parts = [
     "Retrato de personagem em pixar art, plano 3/4.",
     "O personagem tem 11 anos e está ambientado no mundo bruxo de Hogwarts.",
+    "Não vista o personagem com uniforme, capa, gravata ou cachecol de nenhuma casa de Hogwarts, nem use as cores ou o brasão de uma casa — a casa ainda não foi escolhida nesta etapa.",
     state.caracteristicasFisicas.trim() ? `Características físicas: ${state.caracteristicasFisicas.trim()}.` : "",
     state.personalidade.trim() ? `Personalidade: ${state.personalidade.trim()}.` : "",
   ];

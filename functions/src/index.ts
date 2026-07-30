@@ -13,10 +13,12 @@
 // Authorization e a resposta e escrita aos pedacos em `res` em vez de
 // devolvida de uma vez so.
 
+import { randomUUID } from "node:crypto";
 import { onRequest } from "firebase-functions/v2/https";
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
+import { getStorage } from "firebase-admin/storage";
 import { generateImage, streamProvider, type AiProvider, type NarrateMessage } from "./providers.js";
 
 const VALID_PROVIDERS: AiProvider[] = ["anthropic", "openai", "gemini", "grok"];
@@ -165,9 +167,13 @@ interface GenerateImageRequest {
 
 // Gera o retrato do personagem (step 1 do wizard de criação — botão
 // "Gerar imagem do personagem"). Sem streaming (imagem não chega aos
-// pedaços como texto) — devolve `{ imageDataUrl }` de uma vez só, já
-// pronta pra usar num <img src>. Mesma GEMINI_KEY de `sortingNarrate`, e
-// pelo mesmo motivo (usuário ainda não tem personagem nesse ponto).
+// pedaços como texto). O binário volta da IA em base64, mas guardar isso
+// direto no Firestore estoura o limite de 1MiB por documento (e um data
+// URL não é reaproveitável em outro lugar) — por isso sobe pro Storage do
+// próprio projeto (bucket default, já configurado) e devolve `{ imageUrl }`
+// com uma URL pública real, pronta pra usar num <img src> e pra salvar em
+// `image_url` na ficha. Mesma GEMINI_KEY de `sortingNarrate`, e pelo mesmo
+// motivo (usuário ainda não tem personagem nesse ponto).
 export const generateCharacterImage = onRequest({ cors: true }, async (req, res) => {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method Not Allowed" });
@@ -181,8 +187,9 @@ export const generateCharacterImage = onRequest({ cors: true }, async (req, res)
     return;
   }
 
+  let uid: string;
   try {
-    await getAuth().verifyIdToken(idToken);
+    uid = (await getAuth().verifyIdToken(idToken)).uid;
   } catch {
     res.status(401).json({ error: "Sessão inválida. Faça login novamente." });
     return;
@@ -201,9 +208,33 @@ export const generateCharacterImage = onRequest({ cors: true }, async (req, res)
   }
 
   try {
-    const imageDataUrl = await generateImage(geminiKey, prompt);
-    res.json({ imageDataUrl });
+    const { mimeType, base64Data } = await generateImage(geminiKey, prompt);
+    const imageUrl = await uploadCharacterImage(uid, mimeType, base64Data);
+    res.json({ imageUrl });
   } catch (error) {
     res.status(500).json({ error: error instanceof Error ? error.message : "Erro ao gerar a imagem." });
   }
 });
+
+// Sobe o retrato gerado pro bucket default do Storage e devolve uma URL
+// pública de download. Usa o mesmo esquema de token que o client SDK do
+// Firebase gera (`firebaseStorageDownloadTokens` nos metadados do objeto +
+// `?alt=media&token=...` na URL) em vez de `file.makePublic()` — buckets
+// novos do Firebase Storage vêm com Uniform Bucket-Level Access ligado, que
+// bloqueia ACL por objeto, então `makePublic()` falharia.
+async function uploadCharacterImage(uid: string, mimeType: string, base64Data: string): Promise<string> {
+  const extension = mimeType.split("/")[1]?.split("+")[0] ?? "png";
+  const filePath = `character-images/${uid}/${Date.now()}.${extension}`;
+  const downloadToken = randomUUID();
+
+  const bucket = getStorage().bucket();
+  const file = bucket.file(filePath);
+  await file.save(Buffer.from(base64Data, "base64"), {
+    metadata: {
+      contentType: mimeType,
+      metadata: { firebaseStorageDownloadTokens: downloadToken },
+    },
+  });
+
+  return `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${downloadToken}`;
+}

@@ -40,8 +40,10 @@ que lhe interessa. Avançar/voltar é controlado por `step` (índice
    características físicas e personalidade (se preenchida) com uma
    instrução fixa ("11 anos, mundo bruxo de Hogwarts, pixar art, plano
    3/4"). Diferente do resto do wizard, essa chamada **não é streaming**:
-   a function devolve `{ imageDataUrl }` de uma vez (a imagem já em
-   base64, sem passar por upload em Storage). Só gera uma vez —
+   a function gera a imagem (base64), sobe pro Storage do próprio projeto
+   (bucket default, path `character-images/{uid}/...`) e devolve
+   `{ imageUrl }` já como URL pública, pronta pra salvar em `image_url` na
+   ficha. Só gera uma vez —
    `state.imageGenerated` trava o botão depois do primeiro sucesso, sem
    opção de regenerar. Colar uma URL manualmente (campo abaixo do botão,
    com a mesma validação de protocolo http/https do `ImageShareModal` da

@@ -24,8 +24,8 @@ export default function StepIdentity({ state, onChange }: StepIdentityProps) {
     setGenerating(true);
     setImageError(null);
     try {
-      const dataUrl = await generateCharacterImage(buildCharacterImagePrompt(state));
-      onChange((current) => ({ ...current, imageUrl: dataUrl, imageGenerated: true }));
+      const imageUrl = await generateCharacterImage(buildCharacterImagePrompt(state));
+      onChange((current) => ({ ...current, imageUrl, imageGenerated: true }));
     } catch (err) {
       setImageError((err as Error).message);
     } finally {

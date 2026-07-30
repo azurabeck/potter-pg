@@ -1,8 +1,9 @@
 // src/actions/ai/generate-character-image.ts
 // Fala com a Cloud Function "generateCharacterImage" (functions/src/index.ts)
 // — mesma ideia de autenticação de narrate.ts/sorting-narrate.ts (Bearer
-// do ID token), mas sem streaming: a resposta é um JSON `{ imageDataUrl }`
-// de uma vez só, já que geração de imagem não chega aos pedaços como texto.
+// do ID token), mas sem streaming: a resposta é um JSON `{ imageUrl }` de
+// uma vez só (a function já sobe a imagem pro Storage e devolve a URL
+// pública, pronta pra salvar em `image_url` na ficha).
 
 import { auth } from "@/services/firebase_settings";
 
@@ -26,9 +27,9 @@ export async function generateCharacterImage(prompt: string): Promise<string> {
   });
 
   const data = await response.json().catch(() => null);
-  if (!response.ok || typeof data?.imageDataUrl !== "string") {
+  if (!response.ok || typeof data?.imageUrl !== "string") {
     throw new Error(data?.error ?? `Erro ${response.status} ao gerar a imagem.`);
   }
 
-  return data.imageDataUrl;
+  return data.imageUrl;
 }

@@ -34,13 +34,19 @@ const DEFAULT_MODEL: Record<AiProvider, string> = {
 // GET /v1beta/models em 2026-07-30.
 const IMAGE_MODEL = "gemini-3.1-flash-image";
 
-// Gera uma imagem a partir de um prompt de texto e devolve como data URL
-// (base64 inline) — sem upload pra Storage, o client guarda essa string
-// direto no campo `image_url` da ficha. Usa a mesma API generateContent
-// do texto, so que pedindo IMAGE em generationConfig.responseModalities;
-// a imagem volta como um `inlineData` dentro dos parts da resposta, no
-// lugar do texto de sempre.
-export async function generateImage(apiKey: string, prompt: string): Promise<string> {
+// Gera uma imagem a partir de um prompt de texto e devolve o binario (base64)
+// mais o mime type — quem chama decide o que fazer com isso (index.ts sobe
+// pro Storage e devolve uma URL publica; guardar o base64 inteiro direto no
+// Firestore estourava o limite de 1MiB por documento). Usa a mesma API
+// generateContent do texto, so que pedindo IMAGE em
+// generationConfig.responseModalities; a imagem volta como um `inlineData`
+// dentro dos parts da resposta, no lugar do texto de sempre.
+export interface GeneratedImage {
+  mimeType: string;
+  base64Data: string;
+}
+
+export async function generateImage(apiKey: string, prompt: string): Promise<GeneratedImage> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${IMAGE_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
   const response = await fetch(url, {
@@ -61,8 +67,10 @@ export async function generateImage(apiKey: string, prompt: string): Promise<str
   const imagePart = data.candidates?.[0]?.content?.parts?.find((part) => part.inlineData?.data);
   if (!imagePart?.inlineData?.data) throw new Error("A IA não devolveu nenhuma imagem.");
 
-  const mimeType = imagePart.inlineData.mimeType ?? "image/png";
-  return `data:${mimeType};base64,${imagePart.inlineData.data}`;
+  return {
+    mimeType: imagePart.inlineData.mimeType ?? "image/png",
+    base64Data: imagePart.inlineData.data,
+  };
 }
 
 export async function streamProvider(
