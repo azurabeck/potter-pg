@@ -52,6 +52,10 @@ export default function Login() {
     try {
       await loginWithGoogle();
     } catch (err) {
+      // Loga o erro cru (não só a mensagem traduzida) — em produção é o
+      // jeito mais rápido de descobrir o `code` real no DevTools quando
+      // `mapAuthError` ainda não tem uma tradução pra ele (ver functions.ts).
+      console.error("Erro no login com Google:", err);
       setError(mapAuthError(err));
     } finally {
       setSubmitting(false);

@@ -30,6 +30,17 @@ const AUTH_ERROR_MESSAGES: Record<string, string> = {
   "auth/too-many-requests": "Muitas tentativas. Aguarde um momento e tente de novo.",
   "auth/popup-closed-by-user": "Login com Google cancelado.",
   "auth/network-request-failed": "Falha de conexão. Verifique sua internet.",
+  // Domínio de produção não cadastrado em Firebase Console > Authentication
+  // > Settings > Authorized domains — a causa mais comum de "o popup do
+  // Google nem abre" fora do localhost (o SDK recusa antes de sequer tentar
+  // abrir a janela). Precisa adicionar o domínio lá manualmente, não tem
+  // configuração no código pra isso.
+  "auth/unauthorized-domain": "Este domínio não está autorizado no Firebase (Authentication > Settings > Authorized domains).",
+  "auth/popup-blocked": "O navegador bloqueou o popup do Google. Permita popups pra este site e tente de novo.",
+  "auth/cancelled-popup-request": "Login com Google cancelado.",
+  "auth/internal-error": "Erro interno do Firebase. Tente novamente em instantes.",
+  "auth/invalid-api-key": "Configuração do Firebase inválida (API key). Confira as variáveis de ambiente do deploy.",
+  "auth/configuration-not-found": "Login com Google não está habilitado neste projeto Firebase.",
 };
 
 /** Extrai um `auth/...` code de um erro do Firebase e traduz para PT-BR. */

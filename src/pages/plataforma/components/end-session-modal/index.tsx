@@ -7,6 +7,7 @@ import {
   DoorClosed,
   Loader2,
   RefreshCw,
+  Settings,
   Sparkles,
   Users,
   X,
@@ -24,6 +25,12 @@ interface EndSessionModalProps {
   onRetryRegistration: () => void;
   endSessionError: string | null;
   onRetry: () => void;
+  /** `true` quando `endSessionError` é especificamente "sem token de IA
+   * configurado" — troca o botão "Tentar novamente" da fase "error" por
+   * "Abrir Configurações" (`onOpenSettings`). Sem provedor configurado não
+   * adianta tentar de novo, é sempre o mesmo resultado. */
+  needsAiSetup: boolean;
+  onOpenSettings: () => void;
   appliedMysterySuggestions: Set<number>;
   applyingMysteryIndex: number | null;
   onApproveMysterySuggestion: (index: number) => void;
@@ -54,6 +61,8 @@ export default function EndSessionModal({
   onRetryRegistration,
   endSessionError,
   onRetry,
+  needsAiSetup,
+  onOpenSettings,
   appliedMysterySuggestions,
   applyingMysteryIndex,
   onApproveMysterySuggestion,
@@ -153,7 +162,9 @@ export default function EndSessionModal({
             <div className="platform-modal__heading">
               <AlertTriangle size={20} aria-hidden="true" />
               <div>
-                <h2 id="end-session-title">Não foi possível encerrar a sessão</h2>
+                <h2 id="end-session-title">
+                  {needsAiSetup ? "Falta configurar a IA" : "Não foi possível encerrar a sessão"}
+                </h2>
                 <p>{endSessionError}</p>
               </div>
             </div>
@@ -161,9 +172,15 @@ export default function EndSessionModal({
               <button type="button" className="platform-modal__secondary" onClick={onClose}>
                 Fechar
               </button>
-              <button type="button" className="platform-modal__primary" onClick={onRetry}>
-                <RefreshCw size={14} /> Tentar novamente
-              </button>
+              {needsAiSetup ? (
+                <button type="button" className="platform-modal__primary" onClick={onOpenSettings}>
+                  <Settings size={14} /> Abrir Configurações
+                </button>
+              ) : (
+                <button type="button" className="platform-modal__primary" onClick={onRetry}>
+                  <RefreshCw size={14} /> Tentar novamente
+                </button>
+              )}
             </div>
           </>
         )}

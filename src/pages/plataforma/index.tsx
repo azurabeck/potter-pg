@@ -104,6 +104,15 @@ export default function Plataforma() {
   const [endSessionPhase, setEndSessionPhase] = useState<EndSessionPhase>(null);
   const [endSessionSummaries, setEndSessionSummaries] = useState<EndSessionSummary[]>([]);
   const [endSessionError, setEndSessionError] = useState<string | null>(null);
+  // `true` quando a fase "error" é especificamente "não tem token de IA
+  // configurado" (`chooseEndSessionScope`/`endGroupSessionAsNarrator`/
+  // `closeMyGroupSessionParticipation`, abaixo) — troca o botão "Tentar
+  // novamente" do EndSessionModal por "Abrir Configurações". Antes esse
+  // caso fechava o modal na hora e só avisava com uma fala no feed da
+  // narração — fácil de passar despercebido (parecia que o modal "sumia
+  // sem mostrar nada"), então agora fica explícito dentro do próprio
+  // modal, sem fechar sozinho.
+  const [endSessionNeedsSetup, setEndSessionNeedsSetup] = useState(false);
   // Guarda a última tentativa de encerramento (`chooseEndSessionScope`,
   // `endGroupSessionAsNarrator` ou `closeMyGroupSessionParticipation`, já
   // fechadas sobre os próprios argumentos) — é o que o botão "Tentar
@@ -610,11 +619,20 @@ export default function Plataforma() {
     setEndSessionPhase(null);
     setEndSessionSummaries([]);
     setEndSessionError(null);
+    setEndSessionNeedsSetup(false);
     setRetryEndSession(null);
     setRegistration(null);
     setRegistrationError(null);
     setAppliedMysterySuggestions(new Set());
     setAppliedNpcSuggestions(new Set());
+  }
+
+  // Botão "Abrir Configurações" da fase "error" quando `endSessionNeedsSetup`
+  // — fecha o modal de encerramento (não faz sentido os dois abertos ao
+  // mesmo tempo) e abre Configurações no lugar dele.
+  function openSettingsFromEndSession() {
+    closeEndSessionModal();
+    setIsSettingsOpen(true);
   }
 
   // Gera a atualização estruturada (maestria de feitiço/poção, inventário,
@@ -856,11 +874,11 @@ export default function Plataforma() {
       ]);
 
       if (!providerConfig.apiKey) {
-        closeEndSessionModal();
-        addNarratorMessage(
-          "Nenhum token de IA configurado ainda. Abra Configurações, escolha o provedor e cole o token pra narrar."
+        setEndSessionPhase("error");
+        setEndSessionError(
+          "Nenhum token de IA configurado ainda. Abra Configurações, escolha o provedor e cole o token pra gerar o resumo."
         );
-        setIsSettingsOpen(true);
+        setEndSessionNeedsSetup(true);
         return;
       }
 
@@ -946,11 +964,11 @@ export default function Plataforma() {
       const [prompts, providerConfig] = await Promise.all([getAiPrompts(user.uid), getAiProviderConfig(user.uid)]);
 
       if (!providerConfig.apiKey) {
-        closeEndSessionModal();
-        addNarratorMessage(
-          "Nenhum token de IA configurado ainda. Abra Configurações, escolha o provedor e cole o token pra narrar."
+        setEndSessionPhase("error");
+        setEndSessionError(
+          "Nenhum token de IA configurado ainda. Abra Configurações, escolha o provedor e cole o token pra gerar o resumo."
         );
-        setIsSettingsOpen(true);
+        setEndSessionNeedsSetup(true);
         return;
       }
 
@@ -994,11 +1012,11 @@ export default function Plataforma() {
       const [prompts, providerConfig] = await Promise.all([getAiPrompts(user.uid), getAiProviderConfig(user.uid)]);
 
       if (!providerConfig.apiKey) {
-        closeEndSessionModal();
-        addNarratorMessage(
+        setEndSessionPhase("error");
+        setEndSessionError(
           "O narrador encerrou a sessão em grupo, mas você não tem um token de IA configurado — abra Configurações pra registrar sua participação."
         );
-        setIsSettingsOpen(true);
+        setEndSessionNeedsSetup(true);
         return;
       }
 
@@ -1423,6 +1441,8 @@ Narre o momento em que os dois se encontram em "${encounter.location}", unindo a
         onRetryRegistration={retryRegistration}
         endSessionError={endSessionError}
         onRetry={() => retryEndSession?.()}
+        needsAiSetup={endSessionNeedsSetup}
+        onOpenSettings={openSettingsFromEndSession}
         appliedMysterySuggestions={appliedMysterySuggestions}
         applyingMysteryIndex={applyingMysteryIndex}
         onApproveMysterySuggestion={approveMysterySuggestion}
