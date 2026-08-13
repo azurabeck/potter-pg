@@ -104,26 +104,33 @@ de `pages/plataforma`, só que aqui é uma IA fixa do projeto, não a
 configurada pelo usuário — ver por quê logo abaixo).
 
 - **Prompt** (`buildSortingStorySystemPrompt`, `functions.ts`): monta o
-  texto que instrui a IA a narrar no idioma do local do usuário uma cena
-  de iniciação no Beco Diagonal, sempre terminando cada trecho numa
-  situação que força uma ação do jogador; deixa explícito que o jogador
-  ainda não sabe feitiços (ações só podem ser humanas — conversar,
-  ajudar, fugir, mentir etc. — mesmo já tendo varinha); fixa a história
-  entre `SORTING_STORY_MIN_TURNS` (7) e `SORTING_STORY_MAX_TURNS` (10)
-  ações do jogador; e pede pra IA prestar atenção em **como** o jogador
-  reage (não no que ele diz que quer) pra decidir a casa no final. Vira
-  função (em vez de string fixa) porque recebe `wandWood`/`wandCore` —
-  ver "Consistência da varinha" abaixo.
+  texto que instrui a IA a tratar isso como uma sessão de RPG de
+  verdade — cenas de verdade, ritmo de verdade —, inteira dentro do Beco
+  Diagonal (nunca cria cena em outro lugar), sempre terminando cada
+  trecho numa situação que força uma ação do jogador; deixa explícito
+  que o jogador ainda não sabe feitiços (ações só podem ser humanas —
+  conversar, ajudar, fugir, mentir etc. — mesmo já tendo varinha); pede
+  explicitamente uma rolagem de dado antes de resolver qualquer ação
+  arriscada, incerta ou disputada (não ações triviais/sociais); fixa a
+  história entre `SORTING_STORY_MIN_TURNS` (7) e `SORTING_STORY_MAX_TURNS`
+  (15) ações do jogador; e pede pra IA prestar atenção em **como** o
+  jogador reage (não no que ele diz que quer) pra decidir a casa no
+  final. Termina com um único parágrafo de salto no tempo (não uma cena
+  nova) que resume os dias seguintes e pousa direto no Chapéu Seletor,
+  no Salão Principal — é o CHAPÉU quem anuncia a casa, não uma decisão
+  narrada de fora. Vira função (em vez de string fixa) porque recebe
+  `wandWood`/`wandCore` — ver "Consistência da varinha" abaixo.
 - **Dados**: uma linha de botões `d4`–`d20` (`DICE`/`randomDieResult`,
   reaproveitados de `pages/plataforma/functions.ts`) acima do campo de
   ação — rolar um não dispara turno nenhum sozinho, só encaixa o
   resultado no início do texto que o jogador está prestes a mandar
   (`rollDie` em `sorting-story/index.tsx`, ex.: "(Rolei 1d20 e tirei 14)
-  tento acalmar o coruja"), editável antes de enviar. O prompt instrui a
-  IA a usar esse número pra decidir o desfecho da ação, sem virar um
-  sistema de regras separado — mesmo espírito dos dados soltos da
-  Plataforma (`rollDie` lá também só registra, quem interpreta o
-  resultado é sempre quem está narrando).
+  tento acalmar o coruja"), editável antes de enviar. O prompt já pede
+  pra IA exigir essa rolagem antes de resolver ações arriscadas (ver
+  acima) e usar o número pra decidir o desfecho, sem virar um sistema de
+  regras separado — mesmo espírito dos dados soltos da Plataforma
+  (`rollDie` lá também só registra, quem interpreta o resultado é sempre
+  quem está narrando).
 - **Consistência da varinha**: a varinha (madeira + núcleo) já foi
   escolhida no step anterior (obrigatória pra chegar até aqui, ver
   `isFinalStepValid`) — `step-house/index.tsx` resolve `state.wandId`/
@@ -200,20 +207,22 @@ ainda nem existe. Escolher a casa direto no card (sem teste) deixa
 `sortingStoryTranscript` em `null` — `registerFirstSession` não faz
 nada nesse caso, não existe "sessão" nenhuma pra registrar.
 
-Aplica automaticamente o que o fluxo normal já aplica sem aprovação:
-maestria de feitiço/poção (tende a ficar vazio — personagem novo não
-sabe feitiço nenhum ainda), inventário, dinheiro, adversários
-encontrados (`updateCharacterAfterSession`), pontos de casa
-(`addHousePoints`, usando o `hostUserId` de `useCharacter()` — o próprio
-usuário quando não é convidado de mesa alheia), o evento na campanha do
-1º ano (`appendSessionToCampaign`, cria a campanha na hora já que é a
-primeira sessão) e vínculo a NPCs já existentes (`linkNpcToCharacter`).
-Deixa de fora, de propósito, `mystery_suggestions` e
-`npc_creation_suggestions` — no fluxo normal exigem um clique de
-aprovação em `EndSessionModal`; sem modal nenhum aqui, ninguém aprovaria
-nada, então nunca são criados. Qualquer erro é só `console.error` — a
-ficha já foi criada com sucesso antes disso rodar, então nada aqui pode
-travar o wizard nem aparecer como falha pro jogador.
+Aplica TODOS os efeitos que o registro pode gerar, sem exceção — igual a
+encerrar uma sessão de verdade na Plataforma: maestria de feitiço/poção
+(tende a ficar vazio — personagem novo não sabe feitiço nenhum ainda),
+inventário, dinheiro, adversários encontrados
+(`updateCharacterAfterSession`), pontos de casa (`addHousePoints`,
+usando o `hostUserId` de `useCharacter()` — o próprio usuário quando não
+é convidado de mesa alheia), o evento na campanha do 1º ano
+(`appendSessionToCampaign`, cria a campanha na hora já que é a primeira
+sessão), vínculo a NPCs já existentes (`linkNpcToCharacter`) e — mesmo
+esses dois exigindo um clique de aprovação em `EndSessionModal` no
+fluxo normal — mistério novo/atualizado (`applyMysterySuggestion`) e
+criação de NPC novo (`createNpcFromSuggestion`), aplicados direto: sem
+modal nenhum aqui, não tem quem aprovar, e o registro precisa sair
+completo. Qualquer erro é só `console.error` — a ficha já foi criada com
+sucesso antes disso rodar, então nada aqui pode travar o wizard nem
+aparecer como falha pro jogador.
 
 ## Próximos passos (fora do escopo desta versão)
 

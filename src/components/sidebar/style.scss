@@ -1,7 +1,8 @@
 @use "@/assets/styles/variables" as *;
 
-// Aparência "só ícones", usada tanto no toggle manual (.sidebar--collapsed)
-// quanto no breakpoint mobile (abaixo de 720px) — mesma regra nos dois casos.
+// Aparência "só ícones" do toggle manual do desktop (.sidebar--collapsed)
+// — abaixo de 720px o sidebar não usa mais isso, vira uma gaveta cheia
+// (ver `@media (max-width: 720px)` mais abaixo).
 @mixin sidebar-icon-only {
   padding-inline: 10px;
 
@@ -221,34 +222,106 @@
     @include sidebar-icon-only;
   }
 
+  // Abaixo de 720px o sidebar não fica mais visível na tela por padrão —
+  // vira uma gaveta (drawer) fora da tela, destravada pela navbar fixa
+  // mobile (`&__mobile-topbar`, mais abaixo) e pelo botão de hambúrguer
+  // dela. Mesmo padrão de gaveta que `character-panel` já usa (backdrop +
+  // transform + transição), só que abrindo pela esquerda.
   @media (max-width: 720px) {
-    @include sidebar-icon-only;
+    position: fixed;
+    z-index: 1095;
+    top: 0;
+    left: 0;
+    width: min(80vw, 280px);
+    padding: 25px 20px 22.5px;
+    transform: translateX(-100%);
+    box-shadow: 14px 0 40px rgba(0, 0, 0, 0.45);
+    transition: transform 0.22s ease;
 
-    // Menu inteiro escondido (botão de seta virou hambúrguer, ver
-    // index.tsx) — a coluna do grid (App.scss) já vai a 0 via
-    // `--sidebar-width`; zera o padding horizontal aqui pra não sobrar
-    // nenhuma faixa vazada nas bordas de um container de largura 0.
-    &--mobile-hidden {
-      padding-left: 0;
-      padding-right: 0;
-      overflow: hidden;
+    // Cheia (rótulos, perfil, "Sair") quando aberta — diferente do modo
+    // "só ícones" do desktop recolhido, aqui tem espaço de sobra (é uma
+    // gaveta por cima do conteúdo, não uma coluna fixa disputando
+    // largura), então não faz sentido esconder texto nenhum.
+    &--mobile-open {
+      transform: translateX(0);
+    }
 
-      // `position: fixed` escapa do `overflow: hidden`/largura 0 do pai
-      // (não há nenhuma propriedade aqui que crie um novo containing
-      // block pra position:fixed) — continua clicável, flutuando sobre o
-      // conteúdo, no canto onde o menu costumava começar.
-      .sidebar__collapse-toggle {
-        position: fixed;
-        top: 18px;
-        left: 15px;
-        z-index: 1150;
-        width: 42px;
-        height: 42px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 50%;
-        background: $color-bg-panel;
-        box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4);
-      }
+    // O toggle de recolher/expandir é só pro modo coluna do desktop —
+    // dentro da gaveta mobile quem fecha é o X (`&__mobile-close`).
+    .sidebar__collapse-toggle {
+      display: none;
     }
   }
+}
+
+// Navbar fixa mobile: só existe abaixo de 720px (`isNarrow` controla no
+// index.tsx) — brand + botão de hambúrguer que abre a gaveta acima. Sem
+// isso o sidebar ficava OU sempre ocupando espaço da tela (versão
+// anterior, "só ícones" permanente) OU escondido sem nenhum jeito óbvio
+// de abrir de novo.
+.sidebar__mobile-topbar {
+  position: fixed;
+  z-index: 1080;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  padding: 0 15px;
+  display: flex;
+  align-items: center;
+  gap: 12.5px;
+  background: $color-bg-panel;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+}
+
+.sidebar__mobile-menu-button {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: $color-bg-panel-alt;
+  color: #fff;
+  cursor: pointer;
+
+  &:hover {
+    background: $color-bg-panel-soft;
+  }
+}
+
+.sidebar__mobile-topbar-brand {
+  color: #fff;
+  font-size: 13.75px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.sidebar__mobile-close {
+  align-self: flex-end;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: $color-bg-panel-alt;
+  color: #c7c3d4;
+  cursor: pointer;
+
+  &:hover {
+    color: #fff;
+    background: $color-bg-panel-soft;
+  }
+}
+
+.sidebar__mobile-backdrop {
+  position: fixed;
+  z-index: 1090;
+  inset: 0;
+  background: rgba(6, 4, 18, 0.6);
 }

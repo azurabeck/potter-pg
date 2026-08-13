@@ -5,7 +5,8 @@ import { useCharacter } from "@/context/character";
 import { createPlayerCharacter, updateCharacterAfterSession } from "@/actions/sets/characters";
 import { addHousePoints } from "@/actions/sets/table";
 import { appendSessionToCampaign } from "@/actions/sets/campaigns";
-import { linkNpcToCharacter } from "@/actions/sets/npcs";
+import { applyMysterySuggestion } from "@/actions/sets/mysteries";
+import { createNpcFromSuggestion, linkNpcToCharacter } from "@/actions/sets/npcs";
 import { getSpells } from "@/actions/get/spells";
 import { getPotions } from "@/actions/get/potions";
 import { getCharacterMysteries } from "@/actions/get/mysteries";
@@ -155,22 +156,28 @@ export default function CharacterWizard() {
   );
 }
 
-// Registra a história do teste de seleção (Beco Diagonal → trem →
-// Hogwarts → Chapéu Seletor, ver buildSortingStorySystemPrompt em
+// Registra a história do teste de seleção (Beco Diagonal, terminando num
+// salto pro Chapéu Seletor — ver buildSortingStorySystemPrompt em
 // functions.ts) como a PRIMEIRA SESSÃO do personagem recém-criado — roda
 // automática e invisivelmente ao concluir o wizard (sem modal, sem
 // clique nenhum), reaproveitando o MESMO protocolo de registro de sessão
 // da Plataforma (`buildSessionRegistrationPrompt`/`parseSessionRegistration`,
 // pages/plataforma/functions.ts — as mesmas funções puras que
-// `runSessionRegistration` usa lá). A única diferença é o transporte de
-// IA: `sortingNarrate` (a IA fixa do projeto, mesma que narrou a
-// história) em vez do provedor que o usuário configura em
-// Configurações — que nesse ponto do fluxo ainda nem existe (usuário
-// acabou de criar a primeira ficha). `transcript` vazio (casa escolhida
-// direto, sem teste de seleção) não registra nada. Nunca lança: qualquer
-// falha aqui é só logada, nunca aparece pro usuário nem desfaz a
-// criação da ficha (que já aconteceu com sucesso antes desta função
-// rodar).
+// `runSessionRegistration` usa lá) e aplicando TODOS os efeitos que ele
+// pode gerar (maestria, inventário, dinheiro, adversários, pontos de
+// casa, campanha, vínculo de NPC, mistério novo/atualizado e criação de
+// NPC novo) — inclusive os dois últimos, que no fluxo normal do
+// EndSessionModal dependem de um clique de aprovação: aqui não existe
+// modal nenhum pra aprovar, e o pedido é que a primeira sessão saia
+// completa, então são aplicados direto. A única diferença pro fluxo da
+// Plataforma é o transporte de IA: `sortingNarrate` (a IA fixa do
+// projeto, mesma que narrou a história) em vez do provedor que o usuário
+// configura em Configurações — que nesse ponto do fluxo ainda nem existe
+// (usuário acabou de criar a primeira ficha). `transcript` vazio (casa
+// escolhida direto, sem teste de seleção) não registra nada. Nunca
+// lança: qualquer falha aqui é só logada, nunca aparece pro usuário nem
+// desfaz a criação da ficha (que já aconteceu com sucesso antes desta
+// função rodar).
 async function registerFirstSession(
   character: Character,
   transcript: SortingStoryMessage[],
@@ -264,10 +271,27 @@ async function registerFirstSession(
       );
     }
 
-    // `mystery_suggestions`/`npc_creation_suggestions` ficam de fora de
-    // propósito — no fluxo normal (EndSessionModal) exigem um clique de
-    // aprovação do jogador; sem modal nenhum aqui, ninguém aprovaria
-    // nada, então nunca são aplicadas (mesma regra, resultado natural).
+    // No fluxo normal (EndSessionModal) essas duas exigem um clique de
+    // aprovação do jogador antes de aplicar — aqui não tem modal nenhum
+    // pra aprovar nada, e o pedido explícito é que a primeira sessão saia
+    // com TODO o registro feito, então aplica direto, sem esperar
+    // aprovação (mesmo espírito de "invisível e automático" do resto
+    // desta função).
+    if (parsed.mystery_suggestions.length > 0) {
+      await Promise.all(
+        parsed.mystery_suggestions.map((suggestion) => applyMysterySuggestion(character, suggestion))
+      ).catch((error) => {
+        console.error("Erro ao aplicar mistério da primeira sessão:", error);
+      });
+    }
+
+    if (parsed.npc_creation_suggestions.length > 0) {
+      await Promise.all(
+        parsed.npc_creation_suggestions.map((suggestion) => createNpcFromSuggestion(character, suggestion))
+      ).catch((error) => {
+        console.error("Erro ao criar NPC da primeira sessão:", error);
+      });
+    }
   } catch (error) {
     console.error("Erro ao registrar a primeira sessão:", error);
   }

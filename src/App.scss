@@ -26,12 +26,18 @@
     grid-template-columns: var(--sidebar-width, 212.5px) minmax(0, 1fr);
   }
 
-  // Usa a var em vez de fixar 90px — abaixo desse breakpoint o Sidebar
-  // pode zerar `--sidebar-width` sozinho quando o menu está escondido
-  // (botão de hambúrguer, ver components/sidebar/index.tsx), liberando a
-  // largura toda pra `&__content`.
+  // Abaixo desse breakpoint o Sidebar deixa de ser uma coluna — vira uma
+  // gaveta escondida por padrão, aberta por cima do conteúdo (`position:
+  // fixed`, ver components/sidebar/style.scss), destravada pela navbar
+  // fixa mobile dele mesmo. Coluna única, sem reservar espaço nenhum pro
+  // menu; `&__content` ganha um respiro no topo pra não ficar atrás
+  // dessa navbar (56px de altura, mesmo valor de `__mobile-topbar`).
   @media (max-width: 720px) {
-    grid-template-columns: var(--sidebar-width, 90px) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
+
+    &__content {
+      padding-top: 56px;
+    }
   }
 
   // Sem CharacterPanel (ex.: pages/personagens, que já é a própria "folha"
@@ -46,7 +52,7 @@
     }
 
     @media (max-width: 720px) {
-      grid-template-columns: var(--sidebar-width, 90px) minmax(0, 1fr);
+      grid-template-columns: minmax(0, 1fr);
     }
   }
 }
