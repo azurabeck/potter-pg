@@ -8,6 +8,7 @@
   place-items: center;
   padding: 30px;
   background: rgba(9, 7, 24, 0.74);
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
 
   &__panel {

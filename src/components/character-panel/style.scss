@@ -3,6 +3,7 @@
 .character-panel {
   --panel-gap: 14px;
   height: 100vh;
+  height: 100dvh; // desconta a barra do navegador mobile — ver App.scss
   min-height: 0;
   padding: 25px 10px 25px 12.5px;
   display: grid;
@@ -17,6 +18,7 @@
   }
 
   &__portrait-card {
+    position: relative;
     min-height: 0;
     padding: 20px;
     display: grid;
@@ -30,6 +32,116 @@
       min-height: 0;
       object-fit: cover;
       object-position: center top;
+    }
+  }
+
+  &__refresh-table {
+    position: absolute;
+    z-index: 5;
+    top: 8.75px;
+    left: 8.75px;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, .35);
+    color: rgba(255, 255, 255, .75);
+    cursor: pointer;
+    transition: background-color .15s ease, color .15s ease;
+
+    &:hover:not(:disabled),
+    &:focus-visible {
+      background: rgba(102, 86, 255, .4);
+      color: #fff;
+      outline: none;
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: .7;
+    }
+
+    &--error {
+      color: #ff9a9a;
+    }
+  }
+
+  &__refresh-table-spinner {
+    animation: character-panel-refresh-spin .8s linear infinite;
+  }
+
+  // TEMP DEBUG — remover junto com o resto de debugOwnerOverride
+  // (context/character, components/character-panel/index.tsx) quando
+  // não precisar mais testar as permissões de dono da mesa sem uma
+  // segunda conta de verdade.
+  &__owner-picker {
+    position: absolute;
+    z-index: 5;
+    top: 8.75px;
+    right: 8.75px;
+  }
+
+  &__owner-picker-trigger {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, .35);
+    color: rgba(255, 255, 255, .75);
+    cursor: pointer;
+    transition: background-color .15s ease, color .15s ease;
+
+    &:hover,
+    &:focus-visible {
+      background: rgba(102, 86, 255, .4);
+      color: #fff;
+      outline: none;
+    }
+
+    &--active {
+      color: #ffd166;
+    }
+  }
+
+  &__owner-picker-menu {
+    position: absolute;
+    z-index: 6;
+    top: calc(100% + 6.25px);
+    right: 0;
+    min-width: 140px;
+    padding: 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 2.5px;
+    border: 1px solid rgba(133, 128, 173, .28);
+    background: #211b42;
+    box-shadow: 0 12px 28px rgba(10, 7, 28, .45);
+  }
+
+  &__owner-picker-option {
+    padding: 6.25px 8.75px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: rgba(255, 255, 255, .78);
+    text-align: left;
+    font-size: 11.25px;
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(102, 86, 255, .18);
+      color: #fff;
+    }
+
+    &.is-active {
+      background: rgba(255, 209, 102, .16);
+      color: #ffd166;
     }
   }
 
@@ -391,7 +503,7 @@
     z-index: 50;
     left: 50%;
     bottom: calc(100% + 12.5px);
-    width: 335px;
+    width: min(335px, calc(100vw - 20px));
     padding: 0 16.25px 15px;
     border: 1px solid rgba(133, 128, 173, .28);
     background: #211b42;
@@ -415,7 +527,7 @@
     &--pinned {
       position: fixed;
       z-index: 1000;
-      width: 375px;
+      width: min(375px, calc(100vw - 20px));
       bottom: auto;
       padding-bottom: 17.5px;
       transform: none;
@@ -580,6 +692,7 @@
     right: 0;
     width: min(86vw, 425px);
     height: 100vh;
+    height: 100dvh; // ver App.scss
     grid-template-rows: minmax(250px, 38vh) minmax(0, 1fr);
     transform: translateX(100%);
     box-shadow: -14px 0 40px rgba(0, 0, 0, .45);
@@ -626,6 +739,10 @@
   border: 0;
 }
 
+
+@keyframes character-panel-refresh-spin {
+  to { transform: rotate(360deg); }
+}
 
 @keyframes attributes-popover-in {
   from { opacity: 0; transform: translate(-50%, 6px); }

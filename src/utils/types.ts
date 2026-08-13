@@ -449,6 +449,30 @@ export interface Encounter {
   sharedCharacterId: string;
 }
 
+// Sessão narrada por um humano (não pela IA) pra vários jogadores da mesa
+// de uma vez — colecao "group_sessions", id do documento == hostUserId
+// (mesma mesa, só uma sessão em grupo ativa por vez; ver Table acima).
+// Criada por `startGroupSession` (actions/sets/group-session.ts) quando o
+// dono da mesa escolhe "Eu sou o narrador" + "jogar com outros jogadores
+// da mesa" (SettingsModal) e aperta Iniciar; apagada por
+// `endGroupSession` ao encerrar — existência do documento == sessão
+// ativa, mesmo espírito de `narration_sessions`/`TablePlayer`.
+// `sharedSessionId` é calculado na criação (narratorCharacterId +
+// participantCharacterIds, todos ordenados e unidos por "__", mesma
+// ideia do `Encounter.sharedCharacterId" acima) — vira o id do
+// `narration_sessions` compartilhado que todo mundo (narrador incluso)
+// passa a usar em vez de narrar cada um na própria sessão. Diferença
+// central pro Encontro: aqui não há streaming de IA por rodada — quem
+// narra é o próprio dono da mesa, digitando; a IA só entra de novo no
+// encerramento (resumo + registro por participante).
+export interface GroupSession {
+  id: string;
+  narratorUserId: string;
+  narratorCharacterId: string;
+  participantCharacterIds: string[];
+  sharedSessionId: string;
+}
+
 // Pontos que este personagem já somou pra própria casa nesta mesa —
 // `casa`/`ano` NÃO ficam aqui de propósito (já vivem no documento do
 // personagem em "characters"; duplicar arriscaria os dois lugares
@@ -465,14 +489,29 @@ export interface TablePlayer {
 // player (`ensureTableExists`, chamado por `createInvite` em
 // actions/sets/invites.ts) ou, se isso ainda não tiver acontecido por
 // algum motivo, quando alguém ganha o primeiro ponto pra casa
-// (`addHousePoints`, actions/sets/table.ts). Os totais por casa (pra
-// Taça das Casas, ver pages/personagens) são sempre CALCULADOS a partir
-// de `players` (agrupando pela `casa` do personagem, buscada em
-// "characters"), nunca guardados prontos aqui — assim não existe um
-// segundo lugar pra sincronizar toda vez que um ponto muda.
+// (`addHousePoints`, actions/sets/table.ts). `hostUserId` repete o `id`
+// do documento (nunca diverge — os dois são setados juntos, sempre, e o
+// id de um doc não muda depois de criado) só pra ficar explícito/legível
+// direto no payload sem precisar saber da convenção; é quem manda na
+// mesa: só ele pode adicionar novos membros (convidar players,
+// `SettingsModal`) e mudar o tipo de narrador (IA/humano, mesmo modal) —
+// ver `isTableOwner` em `pages/plataforma/components/settings-modal`.
+// `players` também é mantido em dia com quem está sentado na mesa (com 0
+// pontos até ganhar algum) — `syncTableMembers`, chamado por
+// `createInvite` (anfitrião) e `recordGuestCharacter` (convidado), e
+// também via botão manual em `CharacterPanel` pra consertar mesas
+// antigas que ficaram sem alguém. `housePoints` é o placar geral (uma
+// chave por casa, sempre as 4 — ver HOUSES em
+// pages/character-wizard/functions.ts — iniciadas em 0), mantido em dia
+// por `addHousePoints` a cada ponto ganho/perdido (aceita negativo, pra
+// descontar) e recalculado do zero a partir de `players` pelo botão de
+// atualizar do `CharacterPanel` (`recalculateHousePoints`) pra mesas
+// antigas que ficaram sem o campo.
 export interface Table {
   id: string;
+  hostUserId: string;
   year: number;
   npcs: string[];
   players: TablePlayer[];
+  housePoints: Record<string, number>;
 }

@@ -1,15 +1,29 @@
 import { useEffect, useState } from "react";
-import { Check, ChevronDown, DoorClosed, Loader2, Sparkles, Users, X } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  ChevronDown,
+  Download,
+  DoorClosed,
+  Loader2,
+  RefreshCw,
+  Sparkles,
+  Users,
+  X,
+} from "lucide-react";
 import type { EndSessionSummary, SessionRegistration } from "../../functions";
 import "./style.scss";
 
-export type EndSessionPhase = "confirm" | "loading" | "results" | null;
+export type EndSessionPhase = "confirm" | "loading" | "results" | "error" | null;
 
 interface EndSessionModalProps {
   phase: EndSessionPhase;
   summaries: EndSessionSummary[];
   registration: SessionRegistration | null;
   registrationError: string | null;
+  onRetryRegistration: () => void;
+  endSessionError: string | null;
+  onRetry: () => void;
   appliedMysterySuggestions: Set<number>;
   applyingMysteryIndex: number | null;
   onApproveMysterySuggestion: (index: number) => void;
@@ -18,6 +32,12 @@ interface EndSessionModalProps {
   onApproveNpcSuggestion: (index: number) => void;
   onChooseScope: (scope: "self" | "all") => void;
   onClose: () => void;
+  /** Texto pronto da história narrada até agora, pro botão "Baixar história
+   * (.txt)" — `null` quando ainda não há nada narrado (botão some). Fica
+   * disponível em qualquer fase, inclusive erro/loading, pra sempre dar pra
+   * guardar uma cópia mesmo que o resumo da IA falhe. */
+  transcript: string | null;
+  transcriptFileName: string;
 }
 
 /**
@@ -31,6 +51,9 @@ export default function EndSessionModal({
   summaries,
   registration,
   registrationError,
+  onRetryRegistration,
+  endSessionError,
+  onRetry,
   appliedMysterySuggestions,
   applyingMysteryIndex,
   onApproveMysterySuggestion,
@@ -39,6 +62,8 @@ export default function EndSessionModal({
   onApproveNpcSuggestion,
   onChooseScope,
   onClose,
+  transcript,
+  transcriptFileName,
 }: EndSessionModalProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
@@ -57,6 +82,22 @@ export default function EndSessionModal({
     });
   }
 
+  // Baixa a história narrada como .txt direto no navegador — sem passar
+  // pelo pai (não mexe em Firestore nem em nenhum outro estado), disponível
+  // em qualquer fase enquanto houver `transcript`.
+  function downloadTranscript() {
+    if (!transcript) return;
+    const blob = new Blob([transcript], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = transcriptFileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="platform-modal" role="presentation" onMouseDown={phase === "loading" ? undefined : onClose}>
       <div
@@ -70,6 +111,14 @@ export default function EndSessionModal({
           <button className="platform-modal__close" type="button" onClick={onClose} aria-label="Fechar">
             <X size={18} />
           </button>
+        )}
+
+        {transcript && (
+          <div className="end-session-modal__toolbar">
+            <button type="button" className="end-session-modal__download" onClick={downloadTranscript}>
+              <Download size={14} aria-hidden="true" /> Baixar história (.txt)
+            </button>
+          </div>
         )}
 
         {phase === "confirm" && (
@@ -97,6 +146,26 @@ export default function EndSessionModal({
             <Loader2 size={28} className="platform-page__spinner" aria-hidden="true" />
             <p>Gerando o resumo da sessão...</p>
           </div>
+        )}
+
+        {phase === "error" && (
+          <>
+            <div className="platform-modal__heading">
+              <AlertTriangle size={20} aria-hidden="true" />
+              <div>
+                <h2 id="end-session-title">Não foi possível encerrar a sessão</h2>
+                <p>{endSessionError}</p>
+              </div>
+            </div>
+            <div className="platform-modal__footer">
+              <button type="button" className="platform-modal__secondary" onClick={onClose}>
+                Fechar
+              </button>
+              <button type="button" className="platform-modal__primary" onClick={onRetry}>
+                <RefreshCw size={14} /> Tentar novamente
+              </button>
+            </div>
+          </>
         )}
 
         {phase === "results" && (
@@ -136,10 +205,23 @@ export default function EndSessionModal({
               })}
             </div>
 
+            {summaries[0]?.failed && (
+              <div className="end-session-modal__registration-error">
+                <p>
+                  Não foi possível gerar o resumo do seu personagem — a história continua salva e a sessão dele
+                  segue ativa. Feche este resumo e clique em "Encerrar" de novo quando quiser tentar mais uma vez
+                  (ou use "Baixar história" acima pra guardar uma cópia).
+                </p>
+              </div>
+            )}
+
             {registrationError && (
-              <p className="end-session-modal__registration-error">
-                Não foi possível registrar a sessão na sua ficha: {registrationError}
-              </p>
+              <div className="end-session-modal__registration-error">
+                <p>Não foi possível registrar a sessão na sua ficha: {registrationError}</p>
+                <button type="button" onClick={onRetryRegistration}>
+                  <RefreshCw size={13} /> Tentar novamente
+                </button>
+              </div>
             )}
 
             {registration && (

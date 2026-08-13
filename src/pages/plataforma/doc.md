@@ -171,7 +171,33 @@ além da leitura), que cria um mistério novo (`suggested_action:
 Erros nessa etapa (IA fora do ar, JSON malformado, chamada rejeitada)
 não derrubam o resumo em prosa (já mostrado antes) — só aparecem como
 uma mensagem de erro própria no modal (`registrationError`), sem nada
-escrito na ficha.
+escrito na ficha. Dentro de `runSessionRegistration`, depois que
+`updateCharacterAfterSession` grava a ficha, os três passos seguintes
+(pontos de casa, histórico de campanha, vínculo de NPC) rodam cada um no
+próprio `try/catch`, **independentes entre si** — um erro num não trava
+os outros (juntos num `stepErrors[]`, mostrados concatenados em
+`registrationError` se algum falhar). Pontos de casa (`addHousePoints`)
+sobem **primeiro** dos três, de propósito: é o dado mais central do app
+(Taça das Casas), então importa menos ficar bloqueado por um bug em outro
+lugar (ex.: um erro em `appendSessionToCampaign` já derrubou o registro
+inteiro antes, e por tabela os pontos de casa nunca chegavam a ser
+somados — mesmo a sessão tendo narrado um professor dando pontos de
+verdade). O botão "Tentar novamente" ao lado de `registrationError`
+(`retryRegistration`, `index.tsx`) repete só `runSessionRegistration`
+com o mesmo transcript salvo (`lastRegistrationMessagesRef`) — **risco
+conhecido**: a IA roda de novo do zero, então se algum passo já tinha
+funcionado na tentativa anterior, tentar de novo pode reaplicá-lo (ex.:
+somar os pontos de casa uma segunda vez) — não é idempotente entre
+tentativas, sem uma forma fácil de saber o que já foi aplicado antes.
+
+Falha **total** (a chamada de IA nem chega a devolver nada, antes de
+gerar qualquer resumo) tem seu próprio tratamento: `chooseEndSessionScope`,
+`endGroupSessionAsNarrator` e `closeMyGroupSessionParticipation` (seção
+"Sessão em grupo", abaixo) viram `endSessionPhase: "error"` em vez de
+fechar o modal — mostra a mensagem de erro com um botão "Tentar
+novamente" (`retryEndSession`, estado guardando a própria função de
+fechamento já fechada sobre os argumentos originais) que repete a
+tentativa inteira do zero.
 
 **Registro de NPCs (3 casos)** — junto do payload, `runSessionRegistration`
 manda `known_npcs` (NPCs da coleção `npcs` já relacionados a este
@@ -232,6 +258,115 @@ a chamada que a gerou:
 Como passa pelo mesmo `callAi`, uma rodada normal refeita também
 re-salva a sessão no Firestore (`saveNarrationSession`) com o novo
 texto no lugar do antigo — não fica um resumo velho salvo por engano.
+Não existe pra sessão narrada por humano (seção abaixo) —
+`regenerateLastMessage` sai de propósito quando `isHumanNarratedSession`,
+não tem o que "regenerar" de uma fala que o próprio narrador escreveu.
+
+### Sessão em grupo narrada por humano
+
+`SettingsModal` ("Tipo de narrador" → "Eu sou o narrador" → "Quem mais
+participa?") deixa o dono da mesa escolher entre narrar sozinho, com a
+IA jogando um NPC (`companionMode: "ai"` — UI pronta, mas **não**
+wireada: escolher um NPC aqui não faz ele agir sozinho, fica pra uma
+rodada futura) ou com **outros jogadores da mesa**
+(`companionMode: "players"`, `selectedParticipantIds` — só quem está
+online agora, `isUserOnline` do `context/character`). Só o dono da mesa
+vê/mexe nesses controles (`isTableOwner`, ver doc do `settings-modal`).
+Diferença central pro resto da página: com `narratorMode === "human"` a
+IA **não** narra rodada a rodada — quem escreve cada fala (a dele
+próprio e as dos outros) é o próprio dono da mesa, digitando na mesma
+caixa de resposta de sempre. A IA só volta a aparecer no encerramento
+(resumo + registro), exatamente como uma sessão normal.
+
+**Criação da sessão em grupo** (`GroupSession`, `utils/types.ts` —
+coleção `group_sessions`, id do documento == `hostUserId`, mesma mesa de
+`Table`): `playSession()` (`index.tsx`), com `narratorMode === "human"`,
+nunca chama IA — se houver participantes selecionados, chama
+`startGroupSession` (`actions/sets/group-session.ts`), que calcula
+`sharedSessionId` (o characterId do narrador + os dos participantes,
+ordenados e unidos por `"__"`, mesma ideia do `Encounter.sharedCharacterId`
+das seções de Encontro, abaixo) e grava o documento. Cada participante
+(e o próprio narrador) tem um `useEffect` escutando
+`subscribeToGroupSession(hostUserId, ...)` — assim que o próprio
+`characterId` aparece em `narratorCharacterId`/`participantCharacterIds`
+do documento (`isGroupParticipant`), `effectiveCharacterId` passa a
+apontar pro `sharedSessionId` em vez do personagem individual, e
+`sessionActive` liga sozinho (efeito à parte, que só LIGA, nunca
+desliga — diferente do modo IA, aqui o feed pode legitimamente começar
+vazio: não existe cena de abertura automática, o narrador é quem escreve
+a primeira fala). **Sem convite/aceite** — o dono da mesa já escolheu
+gente conhecida e online, então todo mundo selecionado entra direto,
+sem passar por um fluxo de pedido como o de Encontro.
+
+**Cada fala durante a sessão** (`submitResponse`, `isHumanNarratedSession`):
+não chama `continueNarration`/IA nenhuma — só anexa a mensagem ao feed e
+salva (`saveNarrationSession`) direto. `isHumanNarratedSession =
+isGroupParticipant || narratorMode === "human"` — de propósito não é só
+`narratorMode`, porque isso é estado local de CADA cliente
+(`SettingsModal`/`index.tsx`): o participante nunca escolheu "Eu sou o
+narrador" nas próprias Configurações (o dele continua no padrão "ai"),
+então só checar `narratorMode` deixava a IA dele disparando a cada
+mensagem mesmo estando numa sessão em grupo alheia — bug real, corrigido
+trocando pra essa combinação (`isGroupParticipant` é sincronizado via
+Firestore, então vale igual pra narrador e participantes). Quem está
+narrando de verdade (`isNarratorOfActiveSession` — sempre `true` fora de
+uma sessão em grupo; dentro de uma, só pra quem é
+`groupSession.narratorUserId`) entra como `"Narrador"` (mesmo sentinela
+que o resto do app usa pra reconhecer a fala do narrador); os demais
+participantes entram com o próprio `playerName`, exatamente como uma
+rodada normal apareceria.
+
+**Encerramento** — só o narrador pode encerrar (`stopSession` sai cedo
+se `isGroupParticipant && !isNarratorOfActiveSession`; o botão
+"Encerrar" também fica desabilitado pros demais, com um `title`
+explicando). Sem pergunta de escopo (não faz sentido "só eu ou a mesa
+inteira" aqui — o transcript já é um só, compartilhado):
+`endGroupSessionAsNarrator` gera só um resumo em prosa **informativo**
+pro próprio narrador ver (`generateClosingSummary`, extraído de dentro
+de `chooseEndSessionScope` pra ser reaproveitado aqui) — **sem** rodar
+`runSessionRegistration` pra ele: quem narra não "viveu" a própria
+história nessa sessão, então não faz sentido escrever XP/casa/inventário/
+campanha na ficha dele. Depois apaga `group_sessions` (`endGroupSession`)
+e o `narration_sessions/{sharedSessionId}` compartilhado
+(`clearNarrationSession`).
+
+Cada **participante** (não o narrador) gera o **próprio** resumo/registro
+sozinho, no próprio cliente, com a própria conta — é aqui, não no
+narrador, que `runSessionRegistration` de fato roda (campanha, XP, casa,
+inventário são de quem participou/teve a história narrada). Nunca o
+narrador escrevendo na ficha de outra pessoa (mesma fronteira de
+permissão que já valia pro "mesa inteira" de uma sessão normal: "cada um
+só deveria poder escrever a própria ficha", ver seção "Registro de
+sessão" acima). Um efeito em `index.tsx` guarda o `groupSession` anterior
+num `ref` e compara a cada mudança: se este personagem participava (não
+como narrador) e `groupSession` virou `null`, dispara
+`closeMyGroupSessionParticipation` sozinho, sem o participante precisar
+clicar em nada — ele só vê o próprio `EndSessionModal` abrir com o
+resultado assim que o narrador encerra. Usa um snapshot do feed
+(`lastNarrationMessagesRef`, espelhado a cada mudança de
+`narrationMessages`) em vez do estado atual, porque no instante em que o
+efeito roda o feed já pode ter voltado a apontar pra sessão individual
+(vazia) deste personagem — a ordem de dois `useEffect` (o que espelha o
+ref antes do que detecta a mudança de `groupSession`) é o que garante o
+ref estar com o valor certo nesse momento; ver comentários em
+`index.tsx` pro raciocínio completo. **Nunca falha em silêncio** — sem
+token de IA configurado, ou se a IA/registro der erro, mostra um aviso
+no feed (`addNarratorMessage`) e, se for falta de token, já abre
+Configurações; o participante sempre sabe que a sessão acabou, mesmo
+quando o registro em si não rola.
+
+Simplificações/riscos conhecidos:
+- **Não testado com uma segunda conta de verdade** — a parte mais
+  arriscada é a detecção automática do lado do participante (ordem dos
+  efeitos, timing do snapshot); vale conferir com atenção extra na
+  primeira sessão em grupo real.
+- Rolagens de dado (`history`, `HistoryPanel`) continuam sendo estado
+  local por navegador, nunca sincronizadas — o registro de cada
+  participante só enxerga os dados que ELE rolou na própria tela, mesma
+  limitação que já existia fora de sessão em grupo.
+- Sem jeito de **remover** alguém de uma sessão em grupo já iniciada, nem
+  de **adicionar** gente no meio — só dá pra montar o grupo antes de
+  apertar Iniciar.
 
 ### Retomar sessão e mesa ao vivo (Firestore em tempo real)
 
@@ -276,7 +411,11 @@ sem criar nada no Firestore). `createInvite` (`actions/sets/invites.ts`)
 grava um documento na coleção `invites` com `hostUserId`/
 `hostCharacterId` (uid e personagem ativo de quem está convidando),
 `hostName` (nome do personagem do anfitrião, ou o e-mail dele se não
-tiver nome) e `toEmail`, com `status: "pending"`.
+tiver nome) e `toEmail`, com `status: "pending"`. Também garante (`
+ensureTableExists` + `syncTableMembers`, `actions/sets/table.ts`) que o
+documento da mesa existe e que o próprio anfitrião já entra em
+`players` com 0 pontos, em vez de só aparecer lá quando ganhar o
+primeiro ponto de casa.
 
 `InviteBanner` (`components/invite-banner`, montado em `App.tsx` acima
 de tudo — aparece tanto no wizard de criação quanto no app normal,
@@ -320,9 +459,14 @@ configurações continuarem centralizadas no anfitrião. `guestSeat`
 continua existindo, mas só pra: mostrar "Sentado na mesa de {hostName}"
 no header, decidir quem entra em `tableCharacters` (roster da mesa, ver
 `context/character`) e registrar o personagem do convidado no convite
-(`recordGuestCharacter`, abaixo). **Iniciar**, **Encerrar** e
-**Configurações** ficam liberados pra qualquer um sentado na mesa, sem
-depender de ser o anfitrião.
+(`recordGuestCharacter`, abaixo — que também chama `syncTableMembers`
+com `guestSeat.hostUserId`, pra o convidado já entrar em `players` da
+mesa do anfitrião com 0 pontos). **Iniciar** e **Encerrar** ficam
+liberados pra qualquer um sentado na mesa, sem depender de ser o
+anfitrião. Dentro de **Configurações**, a maior parte também (provedor/
+token de IA, prompts), mas "Tipo de narrador"/"IA como jogador" e
+adicionar novos players ficam travados pro anfitrião — ver
+`isTableOwner` na doc do `settings-modal`.
 
 Não implementado ainda: um jeito de sair da mesa (o convite aceito fica
 valendo pra sempre, não há botão de "sair").

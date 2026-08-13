@@ -1,7 +1,14 @@
 import { useState, type Dispatch, type SetStateAction } from "react";
 import CardGroup from "../card-group";
 import SortingStory from "../sorting-story";
-import { HOUSE_FLAGS, HOUSE_OPTIONS, type WizardState } from "../../functions";
+import {
+  CORE_OPTIONS,
+  HOUSE_FLAGS,
+  HOUSE_OPTIONS,
+  WAND_OPTIONS,
+  type SortingStoryMessage,
+  type WizardState,
+} from "../../functions";
 
 interface StepHouseProps {
   state: WizardState;
@@ -21,8 +28,13 @@ type Mode = "summary" | "menu" | "choose" | "quiz";
 export default function StepHouse({ state, onChange }: StepHouseProps) {
   const [mode, setMode] = useState<Mode>(state.casa ? "summary" : "menu");
 
-  function pickHouse(casa: string) {
-    onChange((current) => ({ ...current, casa }));
+  // `transcript` só vem preenchido quando a casa veio do teste de seleção
+  // (`SortingStory.onAccept`) — escolher direto no card (`CardGroup`,
+  // chama com só `casa`) sempre zera qualquer transcript de uma tentativa
+  // de teste anterior e abandonada, pra `registerFirstSession` nunca
+  // registrar uma história que o jogador não aceitou de verdade.
+  function pickHouse(casa: string, transcript?: SortingStoryMessage[]) {
+    onChange((current) => ({ ...current, casa, sortingStoryTranscript: transcript ?? null }));
     setMode("summary");
   }
 
@@ -50,7 +62,21 @@ export default function StepHouse({ state, onChange }: StepHouseProps) {
   }
 
   if (mode === "quiz") {
-    return <SortingStory playerName={state.nome} onAccept={pickHouse} onCancel={() => setMode("choose")} />;
+    // A varinha (madeira + núcleo) já foi escolhida no step anterior
+    // (obrigatória pra chegar até aqui, ver isFinalStepValid) — repassa
+    // pro SortingStory pra manter consistência se a história levar o
+    // jogador até a Olivaras (ver buildSortingStorySystemPrompt).
+    const wandWood = WAND_OPTIONS.find((option) => option.id === state.wandId)?.nome ?? null;
+    const wandCore = CORE_OPTIONS.find((option) => option.id === state.coreId)?.nome ?? null;
+    return (
+      <SortingStory
+        playerName={state.nome}
+        wandWood={wandWood}
+        wandCore={wandCore}
+        onAccept={pickHouse}
+        onCancel={() => setMode("choose")}
+      />
+    );
   }
 
   return (

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Footprints, GripHorizontal, Pin, PinOff, User, UserMinus, X } from "lucide-react";
+import { Crown, Footprints, GripHorizontal, Pin, PinOff, RefreshCw, User, UserMinus, X } from "lucide-react";
 import { CURRENT_CHARACTER_STUB } from "@/services/genene_settings";
 import { useCharacter } from "@/context/character";
+import { recalculateHousePoints, syncTableMembers } from "@/actions/sets/table";
 import { cx, formatAttributeLabel, getAttributeIcon, initials, resolveCharacterMoney } from "@/utils";
 import { progressPercent, progressValue, type CharacterWithProgress } from "./functions";
 import "./style.scss";
@@ -15,14 +16,27 @@ export default function CharacterPanel() {
     showSheet,
     hideSheet,
     tableCharacters,
+    hostUserId,
+    guestSeat,
+    debugOwnerOverride,
+    setDebugOwnerOverride,
     setEncounterTarget,
     isUserOnline,
   } = useCharacter();
+  // TEMP DEBUG — dono DE VERDADE (ignora `debugOwnerOverride`), só pra
+  // decidir quem enxerga o seletor abaixo. Se usasse o `isTableOwner` do
+  // contexto (que o override altera), escolher "outra pessoa" no menu
+  // faria o próprio botão sumir e travaria o teste sem como voltar.
+  const isRealTableOwner = !guestSeat;
   const [attributesOpen, setAttributesOpen] = useState(false);
   const [attributesPinned, setAttributesPinned] = useState(false);
   const [panelPosition, setPanelPosition] = useState({ x: 0, y: 0 });
   const dragOffsetRef = useRef({ x: 0, y: 0 });
   const draggingRef = useRef(false);
+  const [syncingTable, setSyncingTable] = useState(false);
+  const [syncTableError, setSyncTableError] = useState<string | null>(null);
+  // TEMP DEBUG — ver DEBUG_OWNER_OVERRIDE_STORAGE_KEY em context/character.
+  const [ownerPickerOpen, setOwnerPickerOpen] = useState(false);
 
   useEffect(() => {
     function handlePointerMove(event: PointerEvent) {
@@ -105,6 +119,34 @@ export default function CharacterPanel() {
 
   const imageUrl = activeCharacter?.image_url ?? activeCharacter?.image_url_ano_1;
 
+  // Quem está nesta mesa (você + quem mais estiver sentado) — usado tanto
+  // pelo refresh de `players`/`housePoints` abaixo quanto pelo seletor
+  // temporário de dono da mesa.
+  const tableRoster = [...(activeCharacter ? [activeCharacter] : []), ...tableCharacters];
+
+  // Conserta mesas que ficaram sem `players` populado (bug antigo: só
+  // `addHousePoints` inseria alguém lá, então quem nunca ganhou ponto
+  // ficava de fora do documento mesmo já estando na mesa) e recalcula
+  // `housePoints` (placar geral) do zero a partir de `players` — cobre
+  // tanto mesas criadas antes desse campo existir quanto qualquer
+  // divergência que apareça por algum motivo.
+  async function handleRefreshTable() {
+    if (!hostUserId || syncingTable) return;
+    setSyncingTable(true);
+    setSyncTableError(null);
+    try {
+      const characterIds = tableRoster.map((character) => character.id);
+      const houseByCharacterId = Object.fromEntries(tableRoster.map((character) => [character.id, character.casa]));
+
+      await syncTableMembers(hostUserId, characterIds);
+      await recalculateHousePoints(hostUserId, houseByCharacterId);
+    } catch (err) {
+      setSyncTableError((err as Error).message);
+    } finally {
+      setSyncingTable(false);
+    }
+  }
+
   return (
     <>
       <button
@@ -144,6 +186,68 @@ export default function CharacterPanel() {
         </button>
 
         <section className="character-panel__portrait-card">
+        {hostUserId && (
+          <button
+            type="button"
+            className={cx("character-panel__refresh-table", syncTableError && "character-panel__refresh-table--error")}
+            onClick={handleRefreshTable}
+            disabled={syncingTable}
+            aria-label="Atualizar jogadores da mesa"
+            title={syncTableError ?? "Atualizar jogadores da mesa (conserta quem ficou de fora)"}
+          >
+            <RefreshCw size={13} strokeWidth={1.8} className={syncingTable ? "character-panel__refresh-table-spinner" : undefined} />
+          </button>
+        )}
+        {/* TEMP DEBUG — remover junto com debugOwnerOverride/setDebugOwnerOverride
+            (context/character) quando não precisar mais simular ser/não-ser o
+            dono da mesa sem uma segunda conta de verdade. Só o dono DE VERDADE
+            enxerga o botão — um convidado não deveria nem saber que esse
+            seletor existe. */}
+        {hostUserId && isRealTableOwner && (
+          <div className="character-panel__owner-picker">
+            <button
+              type="button"
+              className={cx("character-panel__owner-picker-trigger", debugOwnerOverride && "character-panel__owner-picker-trigger--active")}
+              onClick={() => setOwnerPickerOpen((current) => !current)}
+              aria-label="Selecionar dono da mesa (temporário, pra teste)"
+              title="TEMP: selecionar dono da mesa pra testar permissões"
+            >
+              <Crown size={13} strokeWidth={1.8} />
+            </button>
+            {ownerPickerOpen && (
+              <div className="character-panel__owner-picker-menu" role="menu">
+                <button
+                  type="button"
+                  className={cx("character-panel__owner-picker-option", debugOwnerOverride === null && "is-active")}
+                  onClick={() => {
+                    setDebugOwnerOverride(null);
+                    setOwnerPickerOpen(false);
+                  }}
+                >
+                  Usar real
+                </button>
+                {tableRoster
+                  .filter((character) => character.user_id)
+                  .map((character) => (
+                    <button
+                      key={character.id}
+                      type="button"
+                      className={cx(
+                        "character-panel__owner-picker-option",
+                        debugOwnerOverride === character.user_id && "is-active"
+                      )}
+                      onClick={() => {
+                        setDebugOwnerOverride(character.user_id as string);
+                        setOwnerPickerOpen(false);
+                      }}
+                    >
+                      {character.name || "Sem nome"}
+                    </button>
+                  ))}
+              </div>
+            )}
+          </div>
+        )}
         {tableCharacters.length > 0 ? (
           <ul className="character-panel__roster" aria-label="Personagens na mesa">
             {[...(activeCharacter ? [activeCharacter] : []), ...tableCharacters].map((character) => {

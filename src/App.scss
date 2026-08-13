@@ -5,6 +5,12 @@
   grid-template-columns: var(--sidebar-width, 240px) minmax(0, 1fr) 337.5px;
   width: 100%;
   height: 100vh;
+  // `dvh` (viewport "dinâmico", desconta a barra de endereço/toolbar do
+  // navegador mobile) depois de `vh` — navegador sem suporte ignora a
+  // linha e fica só com `100vh`; com suporte, essa vence por vir depois.
+  // Sem isso, Safari/Chrome no celular cortam uma faixa do rodapé da
+  // tela (Sidebar/DiceRoller/etc.) atrás da barra do navegador.
+  height: 100dvh;
   min-height: 0;
   overflow: hidden;
   background: $color-bg-app;

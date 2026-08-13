@@ -65,10 +65,11 @@
   &__item-header {
     width: 100%;
     min-height: 50px;
-    padding: 0 17.5px;
+    padding: 10px 17.5px;
     display: flex;
     align-items: center;
-    gap: 12.5px;
+    flex-wrap: wrap;
+    gap: 8.75px 12.5px;
     border: 0;
     background: transparent;
     color: #fff;
@@ -89,9 +90,19 @@
   }
 
   &__item-name {
+    // Nome comprido + badge + seta cabem numa linha só em telas largas;
+    // no mobile o header quebra (`flex-wrap` acima) e o nome ganha a
+    // linha toda pra si — `min-width: 0` é o que permite ele encolher
+    // (e truncar, se ainda faltar espaço) em vez de forçar o header a
+    // ficar mais largo que a tela.
+    min-width: 0;
+    flex: 1 1 160px;
+    overflow: hidden;
     color: #fff;
     font-size: 16.25px;
     font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   &__item-meta {

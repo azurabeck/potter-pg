@@ -31,11 +31,27 @@ const AI_PROVIDER_LABEL: Record<AiProvider, string> = {
   grok: "xAI (Grok)",
 };
 
+export type CompanionMode = "none" | "ai" | "players";
+
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddPlayer: (item: HistoryItem) => void;
   onRequireSetup: () => void;
+  // Tipo de narrador e quem mais participa (narração humana) — levantado
+  // pro pai (`pages/plataforma/index.tsx`) porque `playSession` precisa
+  // saber disso pra decidir se chama a IA pra abrir a cena ou se espera o
+  // narrador digitar (ver GroupSession, utils/types.ts). Continuam
+  // sobrevivendo a um fechar/abrir do modal do mesmo jeito de sempre,
+  // porque agora é o pai que nunca desmonta essa parte do estado.
+  narratorMode: "ai" | "human";
+  onNarratorModeChange: (mode: "ai" | "human") => void;
+  companionMode: CompanionMode;
+  onCompanionModeChange: (mode: CompanionMode) => void;
+  selectedAiCharacter: string;
+  onSelectedAiCharacterChange: (characterId: string) => void;
+  selectedParticipantIds: string[];
+  onToggleParticipant: (characterId: string) => void;
 }
 
 /**
@@ -47,12 +63,25 @@ interface SettingsModalProps {
  */
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export default function SettingsModal({ isOpen, onClose, onAddPlayer, onRequireSetup }: SettingsModalProps) {
+export default function SettingsModal({
+  isOpen,
+  onClose,
+  onAddPlayer,
+  onRequireSetup,
+  narratorMode,
+  onNarratorModeChange,
+  companionMode,
+  onCompanionModeChange,
+  selectedAiCharacter,
+  onSelectedAiCharacterChange,
+  selectedParticipantIds,
+  onToggleParticipant,
+}: SettingsModalProps) {
   const { user } = useAuth();
-  const { activeCharacter } = useCharacter();
-  const [narratorMode, setNarratorMode] = useState<"ai" | "human">("ai");
-  const [aiPlays, setAiPlays] = useState(false);
-  const [selectedAiCharacter, setSelectedAiCharacter] = useState("");
+  // `isTableOwner` (context/character) decide quem pode mudar o tipo de
+  // narrador e adicionar novos players (ver comentário de `hostUserId`
+  // em `Table`, utils/types.ts) — só ele pode.
+  const { activeCharacter, tableCharacters, isTableOwner, isUserOnline } = useCharacter();
   const [npcCharacters, setNpcCharacters] = useState<Npc[]>([]);
   const [playerInput, setPlayerInput] = useState("");
   const [players, setPlayers] = useState<string[]>([]);
@@ -63,6 +92,7 @@ export default function SettingsModal({ isOpen, onClose, onAddPlayer, onRequireS
   const [tokenVisible, setTokenVisible] = useState(false);
   const [saving, setSaving] = useState(false);
   const checkedInitialPrompts = useRef(false);
+  const onlineTableCharacters = tableCharacters.filter((character) => isUserOnline(character.user_id));
 
   // Carrega os prompts e o provedor/token salvos (colecao "settings", 1
   // documento por usuario) assim que a Plataforma monta — este componente
@@ -92,21 +122,24 @@ export default function SettingsModal({ isOpen, onClose, onAddPlayer, onRequireS
   }, [user, onRequireSetup]);
 
   useEffect(() => {
-    if (!isOpen || narratorMode !== "human" || !aiPlays) return;
+    if (!isOpen || narratorMode !== "human" || companionMode !== "ai") return;
 
     let cancelled = false;
     getNpcs()
       .then((data) => {
         if (cancelled) return;
         setNpcCharacters(data);
-        setSelectedAiCharacter((current) => current || data[0]?.id || "");
+        if (!selectedAiCharacter && data[0]) onSelectedAiCharacterChange(data[0].id);
       })
       .catch((error) => console.error("Erro ao carregar NPCs:", error));
 
     return () => {
       cancelled = true;
     };
-  }, [isOpen, narratorMode, aiPlays]);
+    // Só busca de novo ao entrar em modo "ai" — `selectedAiCharacter` de
+    // propósito fora do array de deps, senão refaria a busca a cada troca
+    // manual de NPC selecionado.
+  }, [isOpen, narratorMode, companionMode]);
 
   // Nome puro (sem @) só entra na lista visual da sessão, igual sempre
   // funcionou. E-mail vira um convite de verdade (colecao "invites") —
@@ -118,6 +151,7 @@ export default function SettingsModal({ isOpen, onClose, onAddPlayer, onRequireS
   // existir) não dá pra convidar.
   async function addPlayer(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!isTableOwner) return;
     const value = playerInput.trim();
     if (!value || players.some((player) => player.toLowerCase() === value.toLowerCase())) return;
 
@@ -206,18 +240,18 @@ export default function SettingsModal({ isOpen, onClose, onAddPlayer, onRequireS
               <Bot size={16} />
               <div>
                 <strong>Tipo de narrador</strong>
-                <span>Escolha apenas uma opção.</span>
+                <span>{isTableOwner ? "Escolha apenas uma opção." : "Só o dono da mesa pode mudar."}</span>
               </div>
             </div>
 
-            <fieldset className="platform-settings__radios">
+            <fieldset className="platform-settings__radios" disabled={!isTableOwner}>
               <legend className="sr-only">Tipo de narrador</legend>
               <label className={narratorMode === "ai" ? "is-active" : ""}>
                 <input
                   type="radio"
                   name="settings-narrator"
                   checked={narratorMode === "ai"}
-                  onChange={() => setNarratorMode("ai")}
+                  onChange={() => onNarratorModeChange("ai")}
                 />
                 <span className="platform-settings__radio" />
                 Narrador IA
@@ -227,7 +261,7 @@ export default function SettingsModal({ isOpen, onClose, onAddPlayer, onRequireS
                   type="radio"
                   name="settings-narrator"
                   checked={narratorMode === "human"}
-                  onChange={() => setNarratorMode("human")}
+                  onChange={() => onNarratorModeChange("human")}
                 />
                 <span className="platform-settings__radio" />
                 Eu sou o narrador
@@ -240,25 +274,54 @@ export default function SettingsModal({ isOpen, onClose, onAddPlayer, onRequireS
               <div className="platform-settings__section-title">
                 <Sparkles size={16} />
                 <div>
-                  <strong>IA como jogador</strong>
-                  <span>A IA deixa de narrar e assume um NPC.</span>
+                  <strong>Quem mais participa?</strong>
+                  <span>
+                    A IA só entra de novo no encerramento — durante a sessão, quem narra é você
+                    mesmo.
+                  </span>
                 </div>
               </div>
-              <label className="platform-settings__toggle-row">
-                <input
-                  type="checkbox"
-                  checked={aiPlays}
-                  onChange={(event) => setAiPlays(event.target.checked)}
-                />
-                <span className="platform-settings__toggle" />
-                IA joga?
-              </label>
-              {aiPlays && (
+              <fieldset className="platform-settings__radios platform-settings__radios--column" disabled={!isTableOwner}>
+                <legend className="sr-only">Quem mais participa</legend>
+                <label className={companionMode === "none" ? "is-active" : ""}>
+                  <input
+                    type="radio"
+                    name="settings-companion"
+                    checked={companionMode === "none"}
+                    onChange={() => onCompanionModeChange("none")}
+                  />
+                  <span className="platform-settings__radio" />
+                  Ninguém — só eu narrando
+                </label>
+                <label className={companionMode === "ai" ? "is-active" : ""}>
+                  <input
+                    type="radio"
+                    name="settings-companion"
+                    checked={companionMode === "ai"}
+                    onChange={() => onCompanionModeChange("ai")}
+                  />
+                  <span className="platform-settings__radio" />
+                  A IA joga um NPC
+                </label>
+                <label className={companionMode === "players" ? "is-active" : ""}>
+                  <input
+                    type="radio"
+                    name="settings-companion"
+                    checked={companionMode === "players"}
+                    onChange={() => onCompanionModeChange("players")}
+                  />
+                  <span className="platform-settings__radio" />
+                  Outros jogadores da mesa
+                </label>
+              </fieldset>
+
+              {companionMode === "ai" && (
                 <label className="platform-settings__field">
                   <span>Quem é a IA?</span>
                   <select
                     value={selectedAiCharacter}
-                    onChange={(event) => setSelectedAiCharacter(event.target.value)}
+                    disabled={!isTableOwner}
+                    onChange={(event) => onSelectedAiCharacterChange(event.target.value)}
                   >
                     <option value="">Selecione um NPC</option>
                     {npcCharacters.map((character) => (
@@ -269,6 +332,37 @@ export default function SettingsModal({ isOpen, onClose, onAddPlayer, onRequireS
                   </select>
                   <small>Apenas personagens do tipo NPC aparecem nesta lista.</small>
                 </label>
+              )}
+
+              {companionMode === "players" && (
+                <div className="platform-settings__field">
+                  <span>Jogadores (só quem está online agora)</span>
+                  {onlineTableCharacters.length === 0 ? (
+                    <small>Nenhum jogador da mesa está online agora.</small>
+                  ) : (
+                    <div className="platform-settings__participant-list">
+                      {onlineTableCharacters.map((character) => (
+                        <label
+                          key={character.id}
+                          className={
+                            selectedParticipantIds.includes(character.id)
+                              ? "platform-settings__toggle-row is-active"
+                              : "platform-settings__toggle-row"
+                          }
+                        >
+                          <input
+                            type="checkbox"
+                            disabled={!isTableOwner}
+                            checked={selectedParticipantIds.includes(character.id)}
+                            onChange={() => onToggleParticipant(character.id)}
+                          />
+                          <span className="platform-settings__toggle" />
+                          {character.name}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
             </section>
           )}
@@ -410,7 +504,7 @@ export default function SettingsModal({ isOpen, onClose, onAddPlayer, onRequireS
               <UserPlus size={16} />
               <div>
                 <strong>Players da sessão</strong>
-                <span>Adicione quem poderá entrar nesta plataforma.</span>
+                <span>{isTableOwner ? "Adicione quem poderá entrar nesta plataforma." : "Só o dono da mesa pode adicionar players."}</span>
               </div>
             </div>
             <form className="platform-settings__add-player" onSubmit={addPlayer}>
@@ -421,9 +515,9 @@ export default function SettingsModal({ isOpen, onClose, onAddPlayer, onRequireS
                   setInviteError(null);
                 }}
                 placeholder="Nome ou e-mail do player"
-                disabled={invitingPlayer}
+                disabled={invitingPlayer || !isTableOwner}
               />
-              <button type="submit" disabled={invitingPlayer}>
+              <button type="submit" disabled={invitingPlayer || !isTableOwner}>
                 <UserPlus size={15} /> {invitingPlayer ? "Convidando..." : "Adicionar"}
               </button>
             </form>

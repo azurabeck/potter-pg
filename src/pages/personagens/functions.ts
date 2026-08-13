@@ -95,25 +95,15 @@ export interface HouseCupEntry {
 }
 
 /**
- * Casas ordenadas por pontuação (maior primeiro) — sempre calculada, nunca
- * lida pronta (ver doc de `Table` em utils/types.ts pro porquê). Soma
- * `TablePlayer.pointsForHouse` de `table.players` por casa, resolvendo a
- * casa de cada jogador via `roster` (os personagens da mesa, já
- * carregados pela página — `Table` não guarda casa/ano de propósito).
- * Jogador sem personagem correspondente no roster (ex.: já saiu da mesa)
- * é ignorado. Sem documento de mesa ainda (`table: null`, ninguém ganhou
- * ponto), todas as 4 casas aparecem zeradas.
+ * Casas ordenadas por pontuação (maior primeiro) — lida direto de
+ * `table.housePoints` (o placar geral, mantido em dia por
+ * `addHousePoints`/`recalculateHousePoints`, `actions/sets/table.ts`),
+ * nunca recalculada aqui. Sem documento de mesa ainda (`table: null`) ou
+ * mesa antiga sem o campo, todas as 4 casas aparecem zeradas.
  */
-export function buildHouseCupStandings(table: Table | null, roster: Character[]): HouseCupEntry[] {
-  const totals = new Map<string, number>(HOUSES.map((casa) => [casa, 0]));
-
-  for (const player of table?.players ?? []) {
-    const character = roster.find((c) => c.id === player.characterId);
-    if (!character || !totals.has(character.casa)) continue;
-    totals.set(character.casa, (totals.get(character.casa) ?? 0) + player.pointsForHouse);
-  }
-
-  return Array.from(totals, ([casa, pontos]) => ({ casa, pontos })).sort((a, b) => b.pontos - a.pontos);
+export function buildHouseCupStandings(table: Table | null): HouseCupEntry[] {
+  const source = table?.housePoints ?? {};
+  return HOUSES.map((casa) => ({ casa, pontos: source[casa] ?? 0 })).sort((a, b) => b.pontos - a.pontos);
 }
 
 /**

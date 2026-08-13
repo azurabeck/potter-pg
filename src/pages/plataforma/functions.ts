@@ -65,12 +65,27 @@ export function buildClosingPrompt(prompts: AiPrompts): string {
 
 // Resumo de encerramento de UM personagem da mesa (EndSessionModal).
 // `text: null` quer dizer que não há sessão de narração salva pra ele
-// nessa rodada — não participou, então nem chega a chamar a IA.
+// nessa rodada — não participou, então nem chega a chamar a IA. `failed`
+// marca quando a IA foi chamada mas falhou (`text` vira a mensagem de
+// erro) — nesse caso a sessão de narração NÃO é apagada do Firestore (ver
+// `chooseEndSessionScope` em pages/plataforma/index.tsx), pra um erro
+// passageiro da IA não custar a história inteira do personagem.
 export type EndSessionSummary = {
   characterId: string;
   characterName: string;
   text: string | null;
+  failed?: boolean;
 };
+
+// Texto simples (.txt) da história narrada de UM personagem — usado pelo
+// botão "Baixar história" do EndSessionModal, disponível em qualquer fase
+// do encerramento (inclusive se der erro no resumo) pra nunca depender só
+// do resumo da IA pra não perder o que já foi narrado.
+export function buildTranscriptText(characterName: string, messages: NarrationMessage[]): string {
+  const header = `${characterName} — história narrada\n${new Date().toLocaleString("pt-BR")}\n${"-".repeat(40)}\n\n`;
+  if (messages.length === 0) return `${header}(sem mensagens nesta sessão)`;
+  return header + messages.map((message) => `${message.user}:\n${message.text}`).join("\n\n");
+}
 
 export type ScoreboardRow = {
   name: string;

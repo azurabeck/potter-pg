@@ -18,6 +18,7 @@ export const COLLECTIONS = {
   ENEMIES: "enemies",
   LOCATIONS: "locations",
   TABLES: "tables",
+  GROUP_SESSIONS: "group_sessions",
 } as const;
 
 export const APP_NAME = "POTTER-PG";

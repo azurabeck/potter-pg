@@ -64,29 +64,32 @@ cai nas iniciais do nome.
 
 ## Taça das Casas (`components/house-cup`)
 
-Placar das 4 casas, calculado (nunca lido pronto) por
-`buildHouseCupStandings(table, roster)` — soma `TablePlayer.pointsForHouse`
-(coleção `tables`, `utils/types.ts`) por casa, resolvendo a casa de cada
-`characterId` via `roster` (o documento da mesa não guarda casa/ano de
-propósito, pra não duplicar o que já mora em `characters` — ver comentário
-no tipo `Table`). Casa do personagem em vista fica destacada (escudo
-`HOUSE_SHIELDS` no topo do banner + item maior na lista); cada linha usa
-a arte pronta `HOUSE_RIBBONS` (já vem com o nome da casa desenhado).
+Placar das 4 casas, lido direto de `table.housePoints` (coleção `tables`,
+`utils/types.ts` — um número por casa, sempre as 4, iniciadas em 0) via
+`buildHouseCupStandings(table)`; não recalcula nada, só ordena. Casa do
+personagem em vista fica destacada (escudo `HOUSE_SHIELDS` no topo do
+banner + item maior na lista); cada linha usa a arte pronta
+`HOUSE_RIBBONS` (já vem com o nome da casa desenhado).
 
 **De onde vem `table`**: `subscribeToTable(hostUserId, ...)`
 (`actions/get/table.ts`, tempo real) — mesmo `hostUserId` usado pra montar
 `tableCharacters` (`guestSeat?.hostUserId ?? user?.uid`). Documento só
-existe depois que alguém ganha o primeiro ponto; até lá, `table` é `null`
-e as 4 casas aparecem zeradas.
+existe depois que o anfitrião cria o primeiro convite ou alguém ganha o
+primeiro ponto; até lá, `table` é `null` e as 4 casas aparecem zeradas.
 
-**De onde vêm os pontos**: só de um lugar — o encerramento de sessão na
-Plataforma. A IA já recebe instrução (`buildSessionRegistrationPrompt`,
-`pages/plataforma/functions.ts`) pra decidir `house_points_earned` junto
-com o resto do registro (XP, inventário, dinheiro etc.); ao aplicar a
-resposta, `pages/plataforma/index.tsx` chama `addHousePoints` (transação,
-soma no documento da mesa) se o valor vier diferente de zero. Não existe
-tela de ajuste manual de pontos — só a IA decide, no fechamento de cada
-sessão de cada personagem.
+**De onde vêm os pontos**: normalmente só de um lugar — o encerramento de
+sessão na Plataforma. A IA já recebe instrução (`buildSessionRegistrationPrompt`,
+`pages/plataforma/functions.ts`) pra decidir `house_points_earned` (pode
+vir negativo — a própria instrução manda descontar por covardia/maldade
+gratuita) junto com o resto do registro (XP, inventário, dinheiro etc.);
+ao aplicar a resposta, `pages/plataforma/index.tsx` chama `addHousePoints`
+(transação, soma no `pointsForHouse` do personagem **e** no
+`housePoints[casa]` do documento da mesa) se o valor vier diferente de
+zero. Não existe tela de ajuste manual de pontos — só a IA decide, no
+fechamento de cada sessão de cada personagem. Fora isso, `housePoints`
+só muda via `recalculateHousePoints` (botão de atualizar do
+`CharacterPanel`, recalcula do zero a partir de `players` — conserta
+mesas antigas de antes desse campo existir).
 
 **Não** guarda status "conectado" no documento — quem quiser saber quem
 está online usa a assinatura de presença que já existe (`presence`,

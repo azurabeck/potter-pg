@@ -8,7 +8,24 @@ Sidebar / conteúdo da rota / CharacterPanel).
 
 - `__portrait-card`: retrato do personagem ativo (`activeCharacter.image_url`,
   com fallback pra `image_url_ano_1`), ou iniciais em bloco quando não
-  há nenhuma imagem. Quando há mais gente na mesa (`tableCharacters`,
+  há nenhuma imagem. Sempre que existe uma mesa associada (`hostUserId`
+  do `context/character` — o próprio usuário como anfitrião, ou
+  `guestSeat.hostUserId` como convidado), mostra também
+  `__refresh-table` no canto superior esquerdo: chama `syncTableMembers`
+  (`actions/sets/table.ts`) com o personagem ativo + todo mundo em
+  `tableCharacters`, garantindo que cada um tem uma entrada em
+  `players` (0 pontos se ainda não tiver nenhum), e em seguida
+  `recalculateHousePoints` com a casa de cada um (já disponível no
+  roster carregado), que refaz `housePoints` (o placar geral da Taça
+  das Casas, ver `pages/personagens`) do zero a partir de `players`.
+  Existe pra consertar mesas que ficaram incompletas — antes, só
+  `addHousePoints` inseria um personagem em `players`, então quem nunca
+  tinha ganhado ponto de casa ficava de fora do documento mesmo já
+  estando na mesa, e mesas criadas antes de `housePoints` existir não
+  tinham o campo (o fluxo normal de convite/registro/pontuação já
+  mantém tudo isso em dia automaticamente agora, ver
+  `createInvite`/`recordGuestCharacter`/`addHousePoints`; o botão é só
+  pra dados antigos ou alguma divergência). Quando há mais gente na mesa (`tableCharacters`,
   `context/character` — anfitrião + convidados que já registraram
   personagem, ver doc do `plataforma`), a área vira `__roster`: uma
   grade com o próprio personagem primeiro e os demais depois, cada um

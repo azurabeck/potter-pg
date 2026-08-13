@@ -2,6 +2,7 @@
 
 .character-wizard-page {
   min-height: 100vh;
+  min-height: 100dvh; // desconta a barra do navegador mobile — ver App.scss
   display: grid;
   place-items: center;
   padding: 30px;
@@ -12,6 +13,7 @@
     width: 100%;
     max-width: 700px;
     max-height: calc(100vh - 60px);
+    max-height: calc(100dvh - 60px);
     display: flex;
     flex-direction: column;
     padding: 42.5px 37.5px;
@@ -155,6 +157,26 @@
   &__spinner {
     animation: character-wizard-spin 0.8s linear infinite;
   }
+
+  @media (max-width: 480px) {
+    padding: 15px;
+
+    &__card {
+      max-height: calc(100vh - 30px);
+      max-height: calc(100dvh - 30px);
+      padding: 25px 20px;
+      border-radius: 10px;
+    }
+
+    // 4 passos com rótulo (ex.: "Varinha, núcleo e animal") não cabem
+    // numa linha só em ~240px de conteúdo — deixa quebrar em vez de
+    // estourar a largura do card.
+    &__steps {
+      flex-wrap: wrap;
+      justify-content: flex-start;
+      gap: 10px 17.5px;
+    }
+  }
 }
 
 @keyframes character-wizard-spin {
@@ -174,6 +196,7 @@
   justify-content: center;
   padding: 30px;
   background: rgba(8, 6, 26, 0.82);
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
 
   &__panel {
@@ -643,6 +666,51 @@
     }
   }
 
+  // sorting-story: linha de dados acima do campo de ação — rolar um
+  // encaixa o resultado direto no texto da próxima fala do jogador (ver
+  // rollDie em sorting-story/index.tsx), sem turno separado.
+  &__story-dice {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8.75px;
+    color: $color-text-muted;
+    font-size: 13px;
+  }
+
+  &__story-die {
+    height: 30px;
+    padding: 0 11px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: $color-bg-panel-alt;
+    color: $color-text-light;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      border-color: $color-gold-bright;
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+  }
+
+  &__story-dice-result {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: $color-text-light;
+
+    strong {
+      color: $color-gold-bright;
+    }
+  }
+
   &__story-form {
     display: flex;
     gap: 10px;
@@ -691,6 +759,39 @@
       &:disabled {
         opacity: 0.5;
         cursor: not-allowed;
+      }
+    }
+  }
+
+  @media (max-width: 480px) {
+    // step-identity: características físicas + painel de imagem — 250px
+    // fixos pro painel não cabem ao lado do textarea numa tela de
+    // celular, empilha os dois.
+    &__characteristics-row {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    &__image-url-form input {
+      min-width: 0;
+    }
+
+    // 19 atributos em 2 colunas fica apertado demais pro rótulo
+    // ("Aprendizado Mágico" etc.) + controles de +/- num celular — 1
+    // coluna só, a lista já rola dentro de `&__content`.
+    &__attribute-list {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    // step-house: os dois botões do menu inicial ("Fazer teste de
+    // seleção" / "Escolher direto") não cabem lado a lado.
+    &__house-menu {
+      flex-direction: column;
+      align-items: stretch;
+      width: 100%;
+
+      .wizard-step__primary-choice,
+      .wizard-step__secondary-choice {
+        justify-content: center;
       }
     }
   }

@@ -64,6 +64,7 @@
     background: rgba(20, 17, 38, 0.55);
     border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 1248.75px;
+    -webkit-backdrop-filter: blur(2px);
     backdrop-filter: blur(2px);
   }
 
@@ -222,6 +223,19 @@
     align-items: center;
     justify-content: center;
     gap: 17.5px;
+    // Rede de segurança: mesmo depois de encolher no mobile (ver
+    // `@media` abaixo), 5 retratos graduados (d2/d1/d0/d1/d2) + 2 setas
+    // ainda podem passar da largura da tela em telefones bem estreitos —
+    // deixa rolar horizontalmente dentro do próprio carrossel em vez de
+    // estourar a página inteira.
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
 
   &__carousel-arrow {
@@ -320,6 +334,26 @@
       gap: 25px;
     }
 
+    &__carousel-wrap {
+      padding: 20px 15px 25px;
+    }
+
+    &__carousel {
+      justify-content: flex-start;
+      gap: 10px;
+      padding-bottom: 2.5px;
+    }
+
+    &__carousel-arrow {
+      width: 30px;
+      height: 30px;
+      flex-shrink: 0;
+    }
+
+    &__carousel-track {
+      gap: 7.5px;
+    }
+
     &__carousel-item {
       &--d2 {
         width: 55px;
@@ -334,6 +368,25 @@
       &--d0 {
         width: 125px;
         height: 210px;
+      }
+    }
+  }
+
+  @media (max-width: 400px) {
+    &__carousel-item {
+      &--d2 {
+        width: 42.5px;
+        height: 72.5px;
+      }
+
+      &--d1 {
+        width: 65px;
+        height: 110px;
+      }
+
+      &--d0 {
+        width: 97.5px;
+        height: 165px;
       }
     }
   }

@@ -1,7 +1,50 @@
 # SettingsModal
 
-Configurações da sessão: tipo de narrador, IA como jogador (com busca de
-NPCs via `getNpcs`, coleção `npcs`), prompts da IA e cadastro de players.
+Configurações da sessão: tipo de narrador, quem mais participa (IA como
+NPC ou outros jogadores da mesa), prompts da IA e cadastro de players.
+
+## Tipo de narrador e "Quem mais participa?" — estado levantado pro pai
+
+`narratorMode`/`companionMode`/`selectedAiCharacter`/`selectedParticipantIds`
+**não** são estado local deste componente — são props controladas por
+`pages/plataforma/index.tsx`, porque `playSession`/`submitResponse` lá
+precisam saber disso pra decidir se chamam a IA ou esperam o narrador
+digitar (ver `GroupSession`, `utils/types.ts`, e a doc do `plataforma`,
+seção "Sessão em grupo narrada por humano"). Continuam sobrevivendo a um
+fechar/abrir do modal do mesmo jeito de sempre — só que agora é o pai
+quem nunca desmonta essa parte do estado, não este componente.
+
+`companionMode` (só existe com `narratorMode === "human"`) é um dos três:
+`"none"` (só o narrador, ninguém mais), `"ai"` (a IA joga um NPC — UI
+funcional, `selectedAiCharacter` guardado, mas **não** wireado em lugar
+nenhum ainda: escolher um NPC aqui não faz ele agir sozinho) ou
+`"players"` (outros jogadores da mesa — esse sim totalmente funcional,
+ver `startGroupSession` na doc do `plataforma`). Em `"players"`, a lista
+de seleção (`onlineTableCharacters` = `tableCharacters` filtrado por
+`isUserOnline(character.user_id)`, `context/character`) só mostra quem
+está online **agora**; escolher ninguém e apertar Iniciar equivale a
+`"none"` (ver `playSession` no pai).
+
+## Dono da mesa: quem pode mudar o quê
+
+`isTableOwner` (`useCharacter()`) — `true` quando esta sessão **não**
+está sentada na mesa de outra pessoa (é a própria mesa). Só o dono pode:
+- Mudar "Tipo de narrador" e "Quem mais participa?" (fieldsets
+  `platform-settings__radios`/`platform-settings__radios--column`,
+  `disabled={!isTableOwner}` — dimming em `style.scss`, `:disabled`; o
+  select de NPC e cada checkbox de participante também levam
+  `disabled={!isTableOwner}` individualmente, por estarem fora do
+  fieldset).
+- Adicionar players (form "Players da sessão" — input/botão desabilitados
+  e `addPlayer` tem um early-return redundante pra quem não é dono).
+
+Convidados continuam liberados pra tudo o resto do modal (provedor/token
+de IA — cada um narra com o próprio, ver seção abaixo). Essa é uma
+restrição só de UI: não existem regras de segurança do Firestore neste
+repositório (ver seção "Persistência..." abaixo) impedindo um cliente
+adulterado de chamar `createInvite`/`startGroupSession` diretamente —
+pra valer de verdade contra isso, precisaria de regra no console do
+Firebase checando `request.auth.uid == hostUserId`.
 
 Diferente dos outros modais da `Plataforma`, este é sempre montado pelo
 pai (`isOpen` só controla se o JSX visível aparece, via `if (!isOpen)

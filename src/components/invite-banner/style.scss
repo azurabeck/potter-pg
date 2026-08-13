@@ -9,8 +9,9 @@
   &__item {
     display: flex;
     align-items: center;
-    gap: 12.5px;
-    padding: 12.5px 25px;
+    flex-wrap: wrap;
+    gap: 8.75px 12.5px;
+    padding: 12.5px 20px;
     background: $color-bg-panel-alt;
     color: $color-text-light;
 
@@ -20,7 +21,8 @@
     }
 
     p {
-      flex: 1;
+      flex: 1 1 180px;
+      min-width: 0;
       margin: 0;
       font-size: 15px;
 
@@ -32,7 +34,12 @@
 
   &__actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
+    // Some no aviso quebra pra baixo (ver `flex-wrap` do `&__item` acima)
+    // — encosta na esquerda (embaixo do texto) em vez de ficar preso ao
+    // canto direito, que fica estranho depois de quebrar linha.
+    margin-left: 30px;
   }
 
   &__accept,

@@ -6,6 +6,7 @@ import { getAiPrompts, getAiProviderConfig } from "@/actions/get/settings";
 import { getNarrationSessionOnce, subscribeToNarrationSession } from "@/actions/get/narration-session";
 import { subscribeToHostInvites } from "@/actions/get/invites";
 import { subscribeToMyEncounter, subscribeToPendingEncounters } from "@/actions/get/encounters";
+import { subscribeToGroupSession } from "@/actions/get/group-session";
 import { getCharacterMysteries } from "@/actions/get/mysteries";
 import { getSpells } from "@/actions/get/spells";
 import { getPotions } from "@/actions/get/potions";
@@ -14,6 +15,7 @@ import { getEnemies } from "@/actions/get/enemies";
 import { clearNarrationSession, saveNarrationSession } from "@/actions/sets/narration-session";
 import { recordGuestCharacter } from "@/actions/sets/invites";
 import { createEncounter, respondToEncounter } from "@/actions/sets/encounters";
+import { endGroupSession, startGroupSession } from "@/actions/sets/group-session";
 import { updateCharacterAfterSession } from "@/actions/sets/characters";
 import { addHousePoints } from "@/actions/sets/table";
 import { appendSessionToCampaign } from "@/actions/sets/campaigns";
@@ -21,13 +23,13 @@ import { applyMysterySuggestion } from "@/actions/sets/mysteries";
 import { createNpcFromSuggestion, linkNpcToCharacter } from "@/actions/sets/npcs";
 import { narrate, type NarrateMessage } from "@/actions/ai/narrate";
 import { buildCampaignContext } from "@/actions/ai/context";
-import type { Character, Encounter } from "@/utils/types";
+import type { Character, Encounter, GroupSession } from "@/utils/types";
 import ScoreboardPanel from "./components/scoreboard";
 import TurnOrder from "./components/turn-order";
 import NarrationPanel from "./components/narration-panel";
 import HistoryPanel from "./components/history-panel";
 import DiceRoller from "./components/dice-roller";
-import SettingsModal from "./components/settings-modal";
+import SettingsModal, { type CompanionMode } from "./components/settings-modal";
 import ImageShareModal from "./components/image-share-modal";
 import ImagePreviewModal from "./components/image-preview-modal";
 import EncounterModal from "./components/encounter-modal";
@@ -41,6 +43,7 @@ import {
   buildClosingPrompt,
   buildNarrationPrompt,
   buildSessionRegistrationPrompt,
+  buildTranscriptText,
   parseSessionRegistration,
   randomDieResult,
   splitKnownNpcs,
@@ -50,12 +53,28 @@ import "./style.scss";
 
 export default function Plataforma() {
   const { user } = useAuth();
-  const { activeCharacter, tableCharacters, guestSeat, guestSeatLoading, encounterTarget, setEncounterTarget } =
-    useCharacter();
+  const {
+    activeCharacter,
+    tableCharacters,
+    guestSeat,
+    guestSeatLoading,
+    hostUserId,
+    encounterTarget,
+    setEncounterTarget,
+  } = useCharacter();
   const playerName = activeCharacter?.name?.trim() || "Tomas Black";
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [narrating, setNarrating] = useState(false);
+  // Narração humana (SettingsModal, "Tipo de narrador") — levantado pra cá
+  // porque `playSession`/`submitResponse` precisam saber disso pra decidir
+  // se chamam a IA ou esperam o narrador digitar. Ver GroupSession abaixo
+  // pro caso "outros jogadores da mesa".
+  const [narratorMode, setNarratorMode] = useState<"ai" | "human">("ai");
+  const [companionMode, setCompanionMode] = useState<CompanionMode>("none");
+  const [selectedAiCharacter, setSelectedAiCharacter] = useState("");
+  const [selectedParticipantIds, setSelectedParticipantIds] = useState<string[]>([]);
+  const [groupSession, setGroupSession] = useState<GroupSession | null>(null);
   const [rolledDie, setRolledDie] = useState<RolledDie | null>(null);
   const [isImageFormOpen, setIsImageFormOpen] = useState(false);
   const [imageUrlInput, setImageUrlInput] = useState("");
@@ -77,10 +96,28 @@ export default function Plataforma() {
   const [encounterSubmitting, setEncounterSubmitting] = useState(false);
   const [respondingEncounterId, setRespondingEncounterId] = useState<string | null>(null);
 
+  // Clicar em "Encerrar" com um rascunho não enviado na caixa de resposta
+  // não deve descartar essa última fala — fica `true` enquanto `stopSession`
+  // manda o rascunho (esperando a IA responder, se for o caso) antes de
+  // efetivamente abrir o fluxo de encerramento. Ver `sendResponseText`.
+  const [pendingEndSession, setPendingEndSession] = useState(false);
   const [endSessionPhase, setEndSessionPhase] = useState<EndSessionPhase>(null);
   const [endSessionSummaries, setEndSessionSummaries] = useState<EndSessionSummary[]>([]);
+  const [endSessionError, setEndSessionError] = useState<string | null>(null);
+  // Guarda a última tentativa de encerramento (`chooseEndSessionScope`,
+  // `endGroupSessionAsNarrator` ou `closeMyGroupSessionParticipation`, já
+  // fechadas sobre os próprios argumentos) — é o que o botão "Tentar
+  // novamente" da fase "error" chama. `() => fn` (em vez de `fn` direto)
+  // porque `useState` trata um valor função como updater; precisa da
+  // função-que-devolve-a-função pra guardar a função em si como estado.
+  const [retryEndSession, setRetryEndSession] = useState<(() => void) | null>(null);
   const [registration, setRegistration] = useState<SessionRegistration | null>(null);
   const [registrationError, setRegistrationError] = useState<string | null>(null);
+  // Transcript usado na tentativa de registro mais recente — permite o
+  // botão "Tentar novamente" ao lado de `registrationError` (dentro dos
+  // resultados já mostrados) repetir só `runSessionRegistration`, sem
+  // precisar gerar o resumo em prosa de novo.
+  const lastRegistrationMessagesRef = useRef<NarrationMessage[]>([]);
   const [appliedMysterySuggestions, setAppliedMysterySuggestions] = useState<Set<number>>(new Set());
   const [applyingMysteryIndex, setApplyingMysteryIndex] = useState<number | null>(null);
   const [appliedNpcSuggestions, setAppliedNpcSuggestions] = useState<Set<number>>(new Set());
@@ -94,35 +131,126 @@ export default function Plataforma() {
     setEncounterError("");
   }, [encounterTarget]);
 
+  // Sessão em grupo ativa nesta mesa (narrada por um humano, ver
+  // GroupSession em utils/types.ts) — mesmo `hostUserId` de
+  // `tableCharacters`/`subscribeToTable` (o próprio, ou o de quem
+  // convidou). `null` quando não há nenhuma (documento apagado ao
+  // encerrar).
+  useEffect(() => {
+    if (!hostUserId) {
+      setGroupSession(null);
+      return;
+    }
+    return subscribeToGroupSession(hostUserId, setGroupSession);
+  }, [hostUserId]);
+
+  // Este personagem faz parte da sessão em grupo ativa (é o narrador ou
+  // foi selecionado como participante)? Decide `effectiveCharacterId`
+  // abaixo e se esta sessão é "narrada por humano" pro resto da página.
+  const isGroupParticipant =
+    !!groupSession &&
+    (groupSession.narratorCharacterId === activeCharacter?.id ||
+      groupSession.participantCharacterIds.includes(activeCharacter?.id ?? ""));
+
+  // Sou eu quem narra a sessão em grupo ativa? Sem sessão em grupo,
+  // "narrador" é sempre o próprio dono da sessão que está narrando (não
+  // tem outro lado pra comparar) — só passa a ser `false` quando outra
+  // pessoa é o narrador de uma sessão em grupo da qual eu participo.
+  const isNarratorOfActiveSession = !isGroupParticipant || groupSession?.narratorUserId === user?.uid;
+
+  // Esta sessão é narrada por um humano de verdade — nunca chama IA
+  // durante a rodada (`submitResponse`/`regenerateLastMessage` abaixo)?
+  // `narratorMode` sozinho não basta: é estado local de CADA cliente
+  // (`SettingsModal`), então o valor de quem está participando (não
+  // narrando) continua no padrão "ai" mesmo estando numa sessão em grupo
+  // alheia — só `narratorMode === "human"` reflete a escolha de quem
+  // narra. `isGroupParticipant`, em compensação, só existe quando
+  // alguém (o dono da mesa) de fato criou uma sessão em grupo humana —
+  // então basta estar nela, seja como narrador ou participante, pra já
+  // valer "sem IA durante o jogo" independente do que este cliente tem
+  // marcado em Configurações.
+  const isHumanNarratedSession = isGroupParticipant || narratorMode === "human";
+
   // Cada player usa a própria configuração de IA (token/prompts) — sentar
   // na mesa de alguém não empresta as configurações do anfitrião. As
   // histórias já são independentes por padrão (cada um vive a própria)
-  // e só convergem quando um pedido de encontro é aceito, trocando
-  // `effectiveCharacterId` pra `myEncounter.sharedCharacterId` (ver seção
-  // "Encontros" abaixo) — isso não afeta de quem são as configurações.
-  const effectiveCharacterId = myEncounter?.sharedCharacterId ?? activeCharacter?.id ?? null;
+  // e só convergem quando um pedido de encontro é aceito (trocando
+  // `effectiveCharacterId` pra `myEncounter.sharedCharacterId`, ver seção
+  // "Encontros" abaixo) ou quando o dono da mesa inicia uma sessão em
+  // grupo da qual este personagem participa (`groupSession.sharedSessionId`)
+  // — nenhum dos dois afeta de quem são as configurações.
+  const effectiveCharacterId =
+    myEncounter?.sharedCharacterId ??
+    (isGroupParticipant ? groupSession?.sharedSessionId : null) ??
+    activeCharacter?.id ??
+    null;
 
   // Escuta em tempo real o feed de narração do personagem "efetivo"
-  // (a sessão compartilhada de um encontro aceito, ou a do próprio
-  // personagem, por padrão): um documento por personagem no Firestore —
-  // qualquer um que salvar uma resposta nova (`saveNarrationSession`)
-  // atualiza o feed de todo mundo que estiver escutando o mesmo id, sem
-  // reload (ver `subscribeToNarrationSession`). Streaming chunk a chunk
-  // continua só local pra quem disparou a chamada — os outros só veem a
-  // resposta pronta, quando ela é salva no final. Troca de personagem/
-  // encontro sempre zera o feed local antes de escutar a sessão nova,
-  // pra não misturar sessões.
+  // (a sessão compartilhada de um encontro aceito ou de uma sessão em
+  // grupo, ou a do próprio personagem, por padrão): um documento por
+  // personagem no Firestore — qualquer um que salvar uma resposta nova
+  // (`saveNarrationSession`) atualiza o feed de todo mundo que estiver
+  // escutando o mesmo id, sem reload (ver `subscribeToNarrationSession`).
+  // Streaming chunk a chunk continua só local pra quem disparou a
+  // chamada — os outros só veem a resposta pronta, quando ela é salva no
+  // final. Troca de personagem/encontro sempre zera o feed local antes de
+  // escutar a sessão nova, pra não misturar sessões.
   useEffect(() => {
     setNarrationMessages([]);
     setSessionActive(false);
     if (guestSeatLoading || !effectiveCharacterId) return;
 
     return subscribeToNarrationSession(effectiveCharacterId, (messages) => {
-      if (messages.length === 0) return;
       setNarrationMessages(messages);
-      setSessionActive(true);
+      if (messages.length > 0) setSessionActive(true);
     });
   }, [effectiveCharacterId, guestSeatLoading]);
+
+  // Sessão em grupo: fica "ativa" assim que o narrador cria o documento
+  // (ou assim que um participante detecta que entrou nela), mesmo com o
+  // feed ainda vazio — diferente do modo IA, aqui não existe uma "cena de
+  // abertura" automática, quem escreve a primeira fala é o narrador. Só
+  // LIGA `sessionActive`, nunca desliga (isso é papel do efeito acima, ao
+  // trocar de `effectiveCharacterId`, e de `stopSession`/`endGroupSession`
+  // ao encerrar de propósito).
+  useEffect(() => {
+    if (isGroupParticipant) setSessionActive(true);
+  }, [isGroupParticipant]);
+
+  // Espelha `narrationMessages` num ref, sempre — serve só de "última
+  // foto" pro efeito logo abaixo, porque no momento em que ele roda (a
+  // sessão em grupo acabou de ser apagada) o feed já pode ter voltado a
+  // apontar pra sessão individual (vazia) deste personagem, e nesse ponto
+  // o `narrationMessages` (estado) já não teria mais o transcript real.
+  const lastNarrationMessagesRef = useRef<NarrationMessage[]>([]);
+  useEffect(() => {
+    lastNarrationMessagesRef.current = narrationMessages;
+  }, [narrationMessages]);
+
+  // Detecta "eu participava (não como narrador) de uma sessão em grupo, e
+  // ela acabou de ser encerrada pelo narrador" — dispara o registro DESTE
+  // personagem, sozinho, no próprio cliente (ver
+  // `closeMyGroupSessionParticipation` acima da declaração de
+  // `chooseEndSessionScope`, mais abaixo no arquivo). Guardado num ref (em
+  // vez de dependência do efeito) porque só precisamos do valor "de
+  // antes" no instante em que `groupSession` muda — não deve disparar de
+  // novo por conta própria.
+  const previousGroupSessionRef = useRef<GroupSession | null>(null);
+  useEffect(() => {
+    const previous = previousGroupSessionRef.current;
+    previousGroupSessionRef.current = groupSession;
+
+    const wasParticipantNotNarrator =
+      previous &&
+      activeCharacter &&
+      previous.narratorCharacterId !== activeCharacter.id &&
+      previous.participantCharacterIds.includes(activeCharacter.id);
+
+    if (wasParticipantNotNarrator && !groupSession) {
+      closeMyGroupSessionParticipation(lastNarrationMessagesRef.current);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupSession]);
 
   // Convite aceito sem personagem registrado ainda (ex: aceitou durante
   // o wizard de criação) — assim que a ficha existir, grava
@@ -130,7 +258,7 @@ export default function Plataforma() {
   // "Na mesa" de todo mundo (roster do CharacterPanel).
   useEffect(() => {
     if (!guestSeat || !user || !activeCharacter || guestSeat.guestCharacterId === activeCharacter.id) return;
-    recordGuestCharacter(guestSeat.id, user.uid, activeCharacter.id, playerName).catch((error) => {
+    recordGuestCharacter(guestSeat.id, guestSeat.hostUserId, user.uid, activeCharacter.id, playerName).catch((error) => {
       console.error("Erro ao registrar personagem na mesa:", error);
     });
   }, [guestSeat, user, activeCharacter, playerName]);
@@ -192,10 +320,20 @@ export default function Plataforma() {
     function handlePointerMove(event: PointerEvent) {
       if (!scoreboardDragRef.current || !isScoreboardPinned) return;
 
-      const panelWidth = 562.5;
-      const panelHeight = 587.5;
-      const x = Math.min(Math.max(15, event.clientX - scoreboardDragRef.current.offsetX), window.innerWidth - panelWidth - 15);
-      const y = Math.min(Math.max(15, event.clientY - scoreboardDragRef.current.offsetY), window.innerHeight - panelHeight - 15);
+      // `panelWidth`/`panelHeight` são só uma estimativa (o painel tem
+      // altura fluida, e a largura real vem de `min(375px, 100vw - 30px)`
+      // no CSS pra caber em telas estreitas, ver style.scss) — o
+      // `Math.max(15, ...)` no limite direito/inferior é o que garante o
+      // clamp de verdade: em telas menores que o painel (mobile), o
+      // limite "innerWidth - panelWidth - 15" fica negativo, e sem esse
+      // piso o `Math.min` escolheria esse valor negativo, jogando o
+      // painel pra fora da tela pela esquerda/topo ao arrastar.
+      const panelWidth = 375;
+      const panelHeight = 320;
+      const maxX = Math.max(15, window.innerWidth - panelWidth - 15);
+      const maxY = Math.max(15, window.innerHeight - panelHeight - 15);
+      const x = Math.min(Math.max(15, event.clientX - scoreboardDragRef.current.offsetX), maxX);
+      const y = Math.min(Math.max(15, event.clientY - scoreboardDragRef.current.offsetY), maxY);
       setScoreboardPosition({ x, y });
     }
 
@@ -216,10 +354,17 @@ export default function Plataforma() {
     setIsScoreboardPinned((current) => {
       const next = !current;
       if (next) {
-        const width = 562.5;
+        // Mesma estimativa de tamanho do clamp de arrastar, acima — em
+        // telas estreitas (mobile), `window.innerWidth - width` fica
+        // negativo, e o `Math.max(15, ...)` garante que a posição inicial
+        // nunca comece fora da tela pela esquerda. `y` ganha o mesmo
+        // cuidado (antes sempre 112.5, fixo, podendo empurrar o painel
+        // pra baixo da tela numa viewport baixa).
+        const width = 375;
+        const height = 320;
         setScoreboardPosition({
           x: Math.max(15, window.innerWidth - width - 42.5),
-          y: 112.5,
+          y: Math.max(15, Math.min(112.5, window.innerHeight - height - 15)),
         });
       }
       return next;
@@ -245,38 +390,118 @@ export default function Plataforma() {
     ]);
   }
 
-  function submitResponse(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (narrating || !sessionActive) return;
-    const text = responseText.trim();
-    if (!text) return;
+  // Narração humana (`isHumanNarratedSession`, solo ou em grupo): nunca
+  // chama IA — só anexa a fala e salva. Quem está narrando de verdade
+  // entra como "Narrador" (mesmo sentinela que o resto do app já usa pra
+  // reconhecer a fala do narrador, ver `NarrationMessage`); os demais
+  // participantes entram com o próprio nome, exatamente como uma rodada
+  // normal apareceria — a diferença é só que ninguém aqui dispara a IA.
+  // Extraído do handler de submit do formulário (`submitResponse`, abaixo)
+  // pra ser reaproveitado por `stopSession`: clicar em "Encerrar" com um
+  // rascunho não enviado na caixa de resposta manda essa última fala
+  // primeiro (esperando a IA responder, se for o caso) antes de abrir o
+  // encerramento de verdade — ver `pendingEndSession`.
+  async function sendResponseText(text: string): Promise<void> {
+    if (isHumanNarratedSession) {
+      const authorName = isNarratorOfActiveSession ? "Narrador" : playerName;
+      const message: NarrationMessage = { id: crypto.randomUUID(), user: authorName, text };
+      const nextMessages = [...narrationMessages, message];
+      setNarrationMessages(nextMessages);
+      if (effectiveCharacterId) {
+        try {
+          await saveNarrationSession(effectiveCharacterId, nextMessages);
+        } catch (error) {
+          console.error("Erro ao salvar a sessão:", error);
+        }
+      }
+      return;
+    }
 
     const playerMessage: NarrationMessage = { id: crypto.randomUUID(), user: playerName, text };
-    setNarrationMessages((current) => [...current, playerMessage]);
-    setResponseText("");
-
-    continueNarration([...narrationMessages, playerMessage]);
+    const nextMessages = [...narrationMessages, playerMessage];
+    setNarrationMessages(nextMessages);
+    await continueNarration(nextMessages);
   }
 
-  function playSession() {
-    if (narrating || sessionActive) return;
+  function submitResponse(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (narrating || !sessionActive || pendingEndSession) return;
+    const text = responseText.trim();
+    if (!text) return;
+    setResponseText("");
+    sendResponseText(text);
+  }
+
+  // Narrador IA: pede a cena de abertura (`startSession`, chama a IA).
+  // Narrador humano: não chama IA nenhuma — o narrador escreve a primeira
+  // fala manualmente (`submitResponse`, acima). Com "outros jogadores da
+  // mesa" selecionados, cria a sessão em grupo primeiro
+  // (`startGroupSession`) — os participantes entram sozinhos assim que
+  // detectam `isGroupParticipant` (ver efeito acima), sem precisar aceitar
+  // nada (já são gente conhecida, online, escolhida a dedo pelo narrador).
+  async function playSession() {
+    if (narrating || sessionActive || !activeCharacter || !user) return;
     setNarrationMessages([]);
+
+    if (narratorMode === "human") {
+      setSessionActive(true);
+      if (companionMode === "players" && selectedParticipantIds.length > 0 && hostUserId) {
+        try {
+          await startGroupSession(hostUserId, user.uid, activeCharacter.id, selectedParticipantIds);
+        } catch (error) {
+          console.error("Erro ao iniciar a sessão em grupo:", error);
+        }
+      }
+      return;
+    }
+
     setSessionActive(true);
     startSession();
   }
 
-  // Só abre a pergunta de escopo (só eu / mesa inteira) — a chamada de IA
-  // em si só acontece depois que o usuário escolhe, em `chooseEndSessionScope`.
+  // Sessão em grupo: sem pergunta de escopo (o transcript já é um só,
+  // compartilhado) — encerra direto (`endGroupSessionAsNarrator`). Sessão
+  // normal: só abre a pergunta de escopo (só eu / mesa inteira) — a
+  // chamada de IA em si só acontece depois que o usuário escolhe, em
+  // `chooseEndSessionScope`. Numa sessão em grupo, só o narrador pode
+  // encerrar (os demais não têm como decidir isso pelo resto da mesa).
   function stopSession() {
-    if (narrating || !sessionActive) return;
+    if (narrating || !sessionActive || pendingEndSession) return;
+    if (isGroupParticipant && !isNarratorOfActiveSession) return;
+
+    // Tem rascunho não enviado na caixa de resposta: manda essa última fala
+    // primeiro (esperando a IA responder, se a sessão for narrada por IA —
+    // `sendResponseText` só resolve depois disso) e só então segue pro
+    // encerramento de verdade, pra não descartar o que o usuário escreveu.
+    const draft = responseText.trim();
+    if (draft) {
+      setResponseText("");
+      setPendingEndSession(true);
+      sendResponseText(draft).finally(() => {
+        setPendingEndSession(false);
+        proceedToStopSession();
+      });
+      return;
+    }
+
+    proceedToStopSession();
+  }
+
+  function proceedToStopSession() {
+    if (isGroupParticipant) {
+      endGroupSessionAsNarrator();
+      return;
+    }
     setEndSessionPhase("confirm");
   }
 
   // Refaz a última fala do Narrador: descarta ela do feed e repete a
   // mesma chamada que a gerou (abertura ou rodada normal — o resumo de
-  // encerramento não entra mais no feed, ver EndSessionModal).
+  // encerramento não entra mais no feed, ver EndSessionModal). Não existe
+  // pra sessão narrada por humano — não tem o que "regenerar", o narrador
+  // já escreveu a fala do próprio jeito.
   function regenerateLastMessage() {
-    if (narrating || !sessionActive) return;
+    if (narrating || !sessionActive || isHumanNarratedSession) return;
     const lastMessage = narrationMessages[narrationMessages.length - 1];
     if (!lastMessage || lastMessage.user !== "Narrador") return;
 
@@ -384,6 +609,8 @@ export default function Plataforma() {
   function closeEndSessionModal() {
     setEndSessionPhase(null);
     setEndSessionSummaries([]);
+    setEndSessionError(null);
+    setRetryEndSession(null);
     setRegistration(null);
     setRegistrationError(null);
     setAppliedMysterySuggestions(new Set());
@@ -398,10 +625,18 @@ export default function Plataforma() {
   // (ver REGISTRO DE NPCs em buildSessionRegistrationPrompt), criar um
   // NPC do zero não. Tudo isso só pro próprio personagem, nunca pros
   // outros da mesa: escrever na ficha de outra pessoa a partir da própria
-  // sessão não é algo que a mesa deveria permitir, então o resumo dos
-  // outros continua só em prosa (ver `chooseEndSessionScope`).
-  async function runSessionRegistration(): Promise<void> {
+  // sessão não é algo que a mesa deveria permitir — fronteira de
+  // segurança/permissão que vale inclusive pra sessão em grupo (ver
+  // `closeMyGroupSessionParticipation` abaixo: cada participante roda essa
+  // função no PRÓPRIO cliente, nunca o narrador rodando ela pelos outros).
+  // `sessionMessages` por padrão é o feed carregado agora (`narrationMessages`),
+  // mas aceita um snapshot explícito — necessário pro caso de grupo, onde o
+  // feed pode já ter sido trocado/zerado por outro efeito no instante em
+  // que isso roda (ver comentário no efeito de auto-encerramento).
+  async function runSessionRegistration(sessionMessages: NarrationMessage[] = narrationMessages): Promise<void> {
     if (!activeCharacter || !user) return;
+    lastRegistrationMessagesRef.current = sessionMessages;
+    setRegistrationError(null);
 
     try {
       const [prompts, providerConfig, knownSpells, knownPotions, existingMysteries, allNpcs, allEnemies] =
@@ -435,7 +670,7 @@ export default function Plataforma() {
 
       const payload = {
         character: activeCharacter,
-        session_messages: narrationMessages,
+        session_messages: sessionMessages,
         dice_rolls: diceRolls,
         spells: knownSpells.filter((spell) => spell.attributes.ano_letivo <= activeCharacter.ano),
         potions: knownPotions.filter((potion) => potion.ano <= activeCharacter.ano),
@@ -479,22 +714,63 @@ export default function Plataforma() {
         ),
       });
 
+      // Cada escrita daqui pra baixo é independente e não deveria travar
+      // as outras — antes, um erro em `appendSessionToCampaign` (ex.: bug
+      // de referência de documento) derrubava o `try` inteiro ANTES de
+      // chegar nos pontos de casa, então uma sessão com "professor deu 20
+      // pontos" narrado ficava sem nenhum ponto somado na mesa, sem nem
+      // aparecer erro nenhum sobre isso — só sobre a campanha. Pontos de
+      // casa também sobem primeiro, de propósito: é o dado mais "central"
+      // do app (Taça das Casas), então tem menos chance de ficar bloqueado
+      // por um bug em outro lugar.
+      const stepErrors: string[] = [];
+
+      if (parsed.house_points_earned !== 0) {
+        try {
+          const resolvedHostUserId = guestSeat?.hostUserId ?? user.uid;
+          await addHousePoints(resolvedHostUserId, activeCharacter.id, activeCharacter.casa, parsed.house_points_earned);
+        } catch (error) {
+          stepErrors.push(`pontos de casa: ${(error as Error).message}`);
+        }
+      }
+
       if (parsed.session_history.length > 0) {
-        await appendSessionToCampaign(activeCharacter, parsed.session_history);
+        try {
+          await appendSessionToCampaign(activeCharacter, parsed.session_history);
+        } catch (error) {
+          stepErrors.push(`histórico de campanha: ${(error as Error).message}`);
+        }
       }
 
       if (parsed.npc_links.length > 0) {
-        await Promise.all(parsed.npc_links.map((link) => linkNpcToCharacter(link.npc_id, activeCharacter.id)));
+        try {
+          await Promise.all(parsed.npc_links.map((link) => linkNpcToCharacter(link.npc_id, activeCharacter.id)));
+        } catch (error) {
+          stepErrors.push(`vínculo de NPC: ${(error as Error).message}`);
+        }
       }
 
-      if (parsed.house_points_earned !== 0) {
-        const hostUserId = guestSeat?.hostUserId ?? user.uid;
-        await addHousePoints(hostUserId, activeCharacter.id, parsed.house_points_earned);
-      }
+      if (stepErrors.length > 0) setRegistrationError(stepErrors.join(" · "));
     } catch (error) {
       console.error("Erro ao registrar a sessão:", error);
       setRegistrationError((error as Error).message);
     }
+  }
+
+  // Botão "Tentar novamente" ao lado de `registrationError`, dentro dos
+  // resultados já mostrados (o resumo em prosa já gerou com sucesso, só o
+  // registro estruturado falhou) — repete só `runSessionRegistration`,
+  // com o mesmo transcript de antes (`lastRegistrationMessagesRef`), sem
+  // precisar gerar o resumo de novo nem fechar o modal.
+  // Risco conhecido: a IA roda de novo do zero (novo `parsed`), então se
+  // ALGUM passo já tinha funcionado na tentativa anterior (ex.: pontos de
+  // casa somaram certo, só a campanha falhou), tentar de novo pode somar
+  // os pontos uma segunda vez — o registro não é transacional/idempotente
+  // entre tentativas. Sem solução fácil sem guardar o que já foi
+  // aplicado por sessão; por ora, prefira só clicar em "Tentar novamente"
+  // quando o erro mostrado for realmente sobre um passo que não rodou.
+  function retryRegistration() {
+    runSessionRegistration(lastRegistrationMessagesRef.current);
   }
 
   async function approveMysterySuggestion(index: number) {
@@ -529,14 +805,44 @@ export default function Plataforma() {
     }
   }
 
+  // Gera o resumo em prosa de encerramento de UM personagem — extraído
+  // pra ser reaproveitado tanto pelo fluxo normal (`chooseEndSessionScope`,
+  // um resumo por integrante do roster) quanto pelo encerramento de uma
+  // sessão em grupo (`endGroupSessionAsNarrator`/
+  // `closeMyGroupSessionParticipation`, abaixo — cada participante gera o
+  // PRÓPRIO resumo, no próprio cliente).
+  async function generateClosingSummary(
+    character: Character,
+    messages: NarrationMessage[],
+    basePrompt: string
+  ): Promise<string> {
+    const campaignContext = await buildCampaignContext(character);
+    const systemPrompt = [basePrompt, campaignContext].filter(Boolean).join("\n\n");
+    const apiMessages: NarrateMessage[] = [
+      ...messages.map((message) => ({
+        role: message.user === "Narrador" ? ("assistant" as const) : ("user" as const),
+        content: message.text,
+      })),
+      { role: "user" as const, content: "A sessão foi encerrada. Gere o resumo de encerramento agora." },
+    ];
+
+    let fullText = "";
+    await narrate({ systemPrompt, messages: apiMessages }, (chunk) => {
+      fullText += chunk;
+    });
+    return fullText || "A IA não gerou um resumo de encerramento.";
+  }
+
   // Escolhido o escopo (só o próprio personagem, ou a mesa inteira), gera
   // um resumo de encerramento SEPARADO por personagem — cada um com sua
   // própria sessão de narração salva (`narration_sessions`, um documento
   // por personagem) e seu próprio contexto de campanha. Quem não tem
   // sessão salva nem chega a chamar a IA: vira `text: null`
-  // ("não participou", ver EndSessionModal). Todo mundo que participou
-  // tem a sessão encerrada de verdade (Firestore limpo) — o resumo só
-  // aparece no modal, não entra mais no feed.
+  // ("não participou", ver EndSessionModal). Quem participou só tem a
+  // sessão encerrada de verdade (Firestore limpo) se a IA conseguiu gerar
+  // o resumo — se falhar (`failed: true`), a história continua salva e a
+  // sessão do PRÓPRIO personagem (quem clicou em Encerrar) segue ativa,
+  // pra dar pra tentar de novo sem perder nada.
   async function chooseEndSessionScope(scope: "self" | "all") {
     if (!activeCharacter || !user) return;
     setEndSessionPhase("loading");
@@ -570,39 +876,27 @@ export default function Plataforma() {
           }
 
           try {
-            const campaignContext = await buildCampaignContext(character);
-            const systemPrompt = [basePrompt, campaignContext].filter(Boolean).join("\n\n");
-            const apiMessages: NarrateMessage[] = [
-              ...messages.map((message) => ({
-                role: message.user === "Narrador" ? ("assistant" as const) : ("user" as const),
-                content: message.text,
-              })),
-              { role: "user" as const, content: "A sessão foi encerrada. Gere o resumo de encerramento agora." },
-            ];
-
-            let fullText = "";
-            await narrate({ systemPrompt, messages: apiMessages }, (chunk) => {
-              fullText += chunk;
-            });
-
-            return {
-              characterId: character.id,
-              characterName: character.name,
-              text: fullText || "A IA não gerou um resumo de encerramento.",
-            };
+            const text = await generateClosingSummary(character, messages, basePrompt);
+            return { characterId: character.id, characterName: character.name, text };
           } catch (error) {
             return {
               characterId: character.id,
               characterName: character.name,
               text: `A IA não conseguiu responder: ${(error as Error).message}`,
+              failed: true,
             };
           }
         })
       );
 
+      // Só apaga a sessão de quem teve resumo gerado com sucesso — se a IA
+      // falhou pra algum personagem (`failed`), a história narrada dele
+      // continua salva no Firestore, senão um erro passageiro da IA
+      // custaria a sessão inteira sem nem deixar um resumo de verdade no
+      // lugar.
       await Promise.all(
         summaries
-          .filter((summary) => summary.text !== null)
+          .filter((summary) => summary.text !== null && !summary.failed)
           .map((summary) =>
             clearNarrationSession(summary.characterId).catch((error) => {
               console.error("Erro ao encerrar a sessão:", error);
@@ -610,19 +904,114 @@ export default function Plataforma() {
           )
       );
 
+      const ownSummary = summaries.find((summary) => summary.characterId === activeCharacter.id);
+      const ownSummaryFailed = ownSummary?.failed ?? false;
+
       // Registro estruturado (livro do Kingsley) só roda pro próprio
       // personagem — quem clicou em Encerrar — e só se ele participou de
-      // fato da sessão (senão não há nada pra registrar).
-      if (narrationMessages.length > 0) {
+      // fato da sessão E o resumo dele deu certo (senão arrisca aplicar o
+      // registro em cima de uma sessão que, do ponto de vista do
+      // Firestore, nem foi encerrada — ver acima).
+      if (narrationMessages.length > 0 && !ownSummaryFailed) {
         await runSessionRegistration();
       }
 
-      setSessionActive(false);
+      // Se o resumo do PRÓPRIO personagem falhou, a sessão dele continua
+      // ativa (a história não foi pra lugar nenhum) — só marca inativa
+      // quando deu tudo certo.
+      setSessionActive(ownSummaryFailed ? true : false);
       setEndSessionSummaries(summaries);
       setEndSessionPhase("results");
     } catch (error) {
-      closeEndSessionModal();
-      addNarratorMessage(`A IA não conseguiu responder: ${(error as Error).message}`);
+      setEndSessionPhase("error");
+      setEndSessionError((error as Error).message);
+      setRetryEndSession(() => () => chooseEndSessionScope(scope));
+    }
+  }
+
+  // Encerramento de uma sessão em grupo, do lado do NARRADOR — chamado por
+  // `stopSession` no lugar da pergunta de escopo (não faz sentido "só eu
+  // ou a mesa inteira" aqui, o transcript já é um só, compartilhado).
+  // Gera só um resumo em prosa PRA ELE MESMO ver (informativo) — SEM
+  // registro estruturado (XP, casa, inventário, campanha): quem narra não
+  // viveu a própria história nessa sessão, o registro é de quem foi
+  // narrado pra (ver `closeMyGroupSessionParticipation`, cada participante
+  // no próprio cliente). Depois apaga os documentos compartilhados
+  // (`group_sessions` e `narration_sessions` do `sharedSessionId`).
+  async function endGroupSessionAsNarrator() {
+    if (!activeCharacter || !user || !groupSession || !hostUserId) return;
+    setEndSessionPhase("loading");
+
+    try {
+      const [prompts, providerConfig] = await Promise.all([getAiPrompts(user.uid), getAiProviderConfig(user.uid)]);
+
+      if (!providerConfig.apiKey) {
+        closeEndSessionModal();
+        addNarratorMessage(
+          "Nenhum token de IA configurado ainda. Abra Configurações, escolha o provedor e cole o token pra narrar."
+        );
+        setIsSettingsOpen(true);
+        return;
+      }
+
+      const basePrompt = buildClosingPrompt(prompts);
+      const sessionMessages = narrationMessages;
+      const text = sessionMessages.length > 0 ? await generateClosingSummary(activeCharacter, sessionMessages, basePrompt) : null;
+
+      await endGroupSession(hostUserId);
+      await clearNarrationSession(groupSession.sharedSessionId);
+
+      setSessionActive(false);
+      setEndSessionSummaries([{ characterId: activeCharacter.id, characterName: activeCharacter.name, text }]);
+      setEndSessionPhase("results");
+    } catch (error) {
+      setEndSessionPhase("error");
+      setEndSessionError((error as Error).message);
+      setRetryEndSession(() => endGroupSessionAsNarrator);
+    }
+  }
+
+  // Lado de cada PARTICIPANTE (não o narrador) de uma sessão em grupo: o
+  // narrador encerra a sessão dele (`endGroupSessionAsNarrator`, acima),
+  // que apaga o `group_sessions` da mesa — todo cliente que participava
+  // detecta isso (`groupSession` vira `null`) e roda esta função sozinho,
+  // com a própria conta, gerando o PRÓPRIO resumo/registro (nunca o
+  // narrador escrevendo na ficha de outra pessoa — mesma fronteira de
+  // permissão do resto do app, ver `runSessionRegistration`). É aqui, não
+  // no narrador, que o registro de verdade acontece — campanha, XP, casa
+  // e inventário são de quem participou/teve a história narrada, não de
+  // quem só narrou. `messages` vem de um snapshot tirado ANTES do feed
+  // ser zerado (ver o efeito logo abaixo) — no instante em que isso roda,
+  // `narrationMessages` já pode ter voltado a apontar pra sessão
+  // individual (vazia) deste personagem. Sempre termina em algum feedback
+  // visível (resultado, ou aviso no feed) — nunca falha em silêncio, pra
+  // quem estava sendo narrado não ficar sem saber que a sessão acabou.
+  async function closeMyGroupSessionParticipation(messages: NarrationMessage[]) {
+    if (!activeCharacter || !user || messages.length === 0) return;
+    setEndSessionPhase("loading");
+
+    try {
+      const [prompts, providerConfig] = await Promise.all([getAiPrompts(user.uid), getAiProviderConfig(user.uid)]);
+
+      if (!providerConfig.apiKey) {
+        closeEndSessionModal();
+        addNarratorMessage(
+          "O narrador encerrou a sessão em grupo, mas você não tem um token de IA configurado — abra Configurações pra registrar sua participação."
+        );
+        setIsSettingsOpen(true);
+        return;
+      }
+
+      const basePrompt = buildClosingPrompt(prompts);
+      const text = await generateClosingSummary(activeCharacter, messages, basePrompt);
+      await runSessionRegistration(messages);
+
+      setEndSessionSummaries([{ characterId: activeCharacter.id, characterName: activeCharacter.name, text }]);
+      setEndSessionPhase("results");
+    } catch (error) {
+      setEndSessionPhase("error");
+      setEndSessionError((error as Error).message);
+      setRetryEndSession(() => () => closeMyGroupSessionParticipation(messages));
     }
   }
 
@@ -769,6 +1158,24 @@ Narre o momento em que os dois se encontram em "${encounter.location}", unindo a
     }
   }
 
+  const groupNarratorName =
+    isGroupParticipant && !isNarratorOfActiveSession
+      ? tableCharacters.find((character) => character.id === groupSession?.narratorCharacterId)?.name ?? "alguém"
+      : null;
+
+  // Transcript pronto pro botão "Baixar história (.txt)" do EndSessionModal
+  // — a história narrada até agora, disponível em qualquer fase do
+  // encerramento (inclusive se der erro no resumo), pra sempre dar pra
+  // guardar uma cópia mesmo que a IA falhe. `null` quando não há nada
+  // narrado ainda (botão fica escondido, ver EndSessionModal).
+  const endSessionTranscript =
+    narrationMessages.length > 0 ? buildTranscriptText(playerName, narrationMessages) : null;
+  const endSessionTranscriptFileName = `historia-${playerName
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")}-${new Date().toISOString().slice(0, 10)}.txt`;
+
   return (
     <section className="platform-page">
       <header className="platform-page__header">
@@ -777,6 +1184,11 @@ Narre o momento em que os dois se encontram em "${encounter.location}", unindo a
           {guestSeat && (
             <span className="platform-page__guest-seat">
               <Users size={13} aria-hidden="true" /> Sentado na mesa de {guestSeat.hostName}
+            </span>
+          )}
+          {groupNarratorName && (
+            <span className="platform-page__guest-seat">
+              <Users size={13} aria-hidden="true" /> Sessão em grupo narrada por {groupNarratorName}
             </span>
           )}
           {myEncounter && (
@@ -795,11 +1207,22 @@ Narre o momento em que os dois se encontram em "${encounter.location}", unindo a
               type="button"
               className="platform-page__session-button platform-page__session-button--stop"
               aria-label="Encerrar sessão"
-              title="Encerrar sessão"
+              title={
+                isGroupParticipant && !isNarratorOfActiveSession
+                  ? "Só o narrador encerra a sessão em grupo"
+                  : pendingEndSession
+                    ? "Enviando sua última mensagem antes de encerrar..."
+                    : "Encerrar sessão"
+              }
               onClick={stopSession}
-              disabled={narrating}
+              disabled={narrating || pendingEndSession || (isGroupParticipant && !isNarratorOfActiveSession)}
             >
-              <Square size={16} /> Encerrar
+              {pendingEndSession ? (
+                <Loader2 size={16} className="platform-page__spinner" />
+              ) : (
+                <Square size={16} />
+              )}{" "}
+              Encerrar
             </button>
           ) : (
             <button
@@ -881,16 +1304,18 @@ Narre o momento em que os dois se encontram em "${encounter.location}", unindo a
               placeholder={
                 !sessionActive
                   ? "Aperte iniciar pra começar a sessão..."
-                  : narrating
-                    ? "O narrador está escrevendo..."
-                    : "Escreva sua ação ou narração..."
+                  : pendingEndSession
+                    ? "Enviando sua última mensagem antes de encerrar..."
+                    : narrating
+                      ? "O narrador está escrevendo..."
+                      : "Escreva sua ação ou narração..."
               }
               aria-label="Mensagem da rodada"
-              disabled={narrating || !sessionActive}
+              disabled={narrating || pendingEndSession || !sessionActive}
             />
             <button
               type="submit"
-              disabled={!responseText.trim() || narrating || !sessionActive}
+              disabled={!responseText.trim() || narrating || pendingEndSession || !sessionActive}
               aria-label="Enviar mensagem"
             >
               {narrating ? <Loader2 size={16} className="platform-page__spinner" /> : <Send size={16} />}
@@ -943,6 +1368,18 @@ Narre o momento em que os dois se encontram em "${encounter.location}", unindo a
         onClose={() => setIsSettingsOpen(false)}
         onAddPlayer={(item) => setHistory((current) => [...current, item])}
         onRequireSetup={() => setIsSettingsOpen(true)}
+        narratorMode={narratorMode}
+        onNarratorModeChange={setNarratorMode}
+        companionMode={companionMode}
+        onCompanionModeChange={setCompanionMode}
+        selectedAiCharacter={selectedAiCharacter}
+        onSelectedAiCharacterChange={setSelectedAiCharacter}
+        selectedParticipantIds={selectedParticipantIds}
+        onToggleParticipant={(characterId) =>
+          setSelectedParticipantIds((current) =>
+            current.includes(characterId) ? current.filter((id) => id !== characterId) : [...current, characterId]
+          )
+        }
       />
 
       <ImageShareModal
@@ -983,6 +1420,9 @@ Narre o momento em que os dois se encontram em "${encounter.location}", unindo a
         summaries={endSessionSummaries}
         registration={registration}
         registrationError={registrationError}
+        onRetryRegistration={retryRegistration}
+        endSessionError={endSessionError}
+        onRetry={() => retryEndSession?.()}
         appliedMysterySuggestions={appliedMysterySuggestions}
         applyingMysteryIndex={applyingMysteryIndex}
         onApproveMysterySuggestion={approveMysterySuggestion}
@@ -991,6 +1431,8 @@ Narre o momento em que os dois se encontram em "${encounter.location}", unindo a
         onApproveNpcSuggestion={approveNpcSuggestion}
         onChooseScope={chooseEndSessionScope}
         onClose={closeEndSessionModal}
+        transcript={endSessionTranscript}
+        transcriptFileName={endSessionTranscriptFileName}
       />
     </section>
   );

@@ -8,6 +8,10 @@ import { PRESENCE_HEARTBEAT_INTERVAL_MS, sendPresenceHeartbeat } from "@/actions
 import type { Character, TableInvite } from "@/utils/types";
 
 const ACTIVE_CHARACTER_STORAGE_KEY = "potter-pg:active-character-id";
+// TEMP DEBUG — remover junto com `debugOwnerOverride`/`setDebugOwnerOverride`
+// abaixo e o seletor em `CharacterPanel` quando não precisar mais testar as
+// permissões de dono da mesa sem uma segunda conta de verdade.
+const DEBUG_OWNER_OVERRIDE_STORAGE_KEY = "potter-pg:debug-owner-override";
 
 interface CharacterContextValue {
   characters: Character[];
@@ -21,6 +25,10 @@ interface CharacterContextValue {
   guestSeat: TableInvite | null;
   guestSeatLoading: boolean;
   tableCharacters: Character[];
+  hostUserId: string | null;
+  isTableOwner: boolean;
+  debugOwnerOverride: string | null;
+  setDebugOwnerOverride: (userId: string | null) => void;
   encounterTarget: Character | null;
   setEncounterTarget: (character: Character | null) => void;
   isUserOnline: (userId: string | undefined) => boolean;
@@ -38,6 +46,10 @@ const CharacterContext = createContext<CharacterContextValue>({
   guestSeat: null,
   guestSeatLoading: false,
   tableCharacters: [],
+  hostUserId: null,
+  isTableOwner: false,
+  debugOwnerOverride: null,
+  setDebugOwnerOverride: () => {},
   encounterTarget: null,
   setEncounterTarget: () => {},
   isUserOnline: () => false,
@@ -58,6 +70,16 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
   const [tableCharacters, setTableCharacters] = useState<Character[]>([]);
   const [encounterTarget, setEncounterTarget] = useState<Character | null>(null);
   const [onlineUsers, setOnlineUsers] = useState<Record<string, boolean>>({});
+  // TEMP DEBUG — ver comentário em DEBUG_OWNER_OVERRIDE_STORAGE_KEY, acima.
+  const [debugOwnerOverride, setDebugOwnerOverrideState] = useState<string | null>(() =>
+    localStorage.getItem(DEBUG_OWNER_OVERRIDE_STORAGE_KEY)
+  );
+
+  function setDebugOwnerOverride(userId: string | null) {
+    setDebugOwnerOverrideState(userId);
+    if (userId) localStorage.setItem(DEBUG_OWNER_OVERRIDE_STORAGE_KEY, userId);
+    else localStorage.removeItem(DEBUG_OWNER_OVERRIDE_STORAGE_KEY);
+  }
 
   // Heartbeat de presença: só existe pra dizer "estou com o app aberto e
   // logado agora" — não tem relação com qual personagem está ativo, por
@@ -131,6 +153,20 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
   }
 
   const activeCharacter = characters.find((c) => c.id === activeId) ?? null;
+
+  // Dono da mesa em que esta sessao esta sentada — o proprio usuario
+  // quando anfitriao, ou `guestSeat.hostUserId` quando convidado. Mesmo
+  // calculo usado no efeito de `tableCharacters` abaixo; exposto aqui
+  // tambem pra quem precisa chamar `syncTableMembers` (botao de
+  // atualizar em `CharacterPanel`) sem duplicar a logica.
+  const hostUserId = guestSeat?.hostUserId ?? user?.uid ?? null;
+
+  // Dono de verdade é quem NÃO está sentado na mesa de outra pessoa
+  // (`!guestSeat`) — só ele pode adicionar players/mudar tipo de
+  // narrador (`SettingsModal`). `debugOwnerOverride` (TEMP, ver acima)
+  // permite forçar esse valor pra testar as duas visões sem precisar de
+  // uma segunda conta logada; `null` (padrão) usa o valor real.
+  const isTableOwner = debugOwnerOverride !== null ? debugOwnerOverride === user?.uid : !guestSeat;
 
   // Convite aceito mais recente pro e-mail do usuario logado, se houver —
   // decide se essa sessao esta "sentada" na mesa de outra pessoa (ver
@@ -246,6 +282,10 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
         guestSeat,
         guestSeatLoading,
         tableCharacters,
+        hostUserId,
+        isTableOwner,
+        debugOwnerOverride,
+        setDebugOwnerOverride,
         encounterTarget,
         setEncounterTarget,
         isUserOnline,

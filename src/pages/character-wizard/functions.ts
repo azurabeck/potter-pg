@@ -300,29 +300,65 @@ export const CORE_OPTIONS: CardOption[] = [
 ];
 
 // Teste de seleção (step-house, alternativa a escolher a casa direto):
-// a IA narra uma cena curta no Beco Diagonal e o jogador reage com texto
-// livre a cada resposta — sem opções fixas. A casa sugerida vem da
-// própria IA, que observa as atitudes do jogador ao longo da história
-// (ver sorting-story, componente que conduz esse fluxo, e
-// actions/ai/sorting-narrate.ts pra como a chamada funciona).
+// a IA narra uma cena curta em 4 atos (Beco Diagonal → trem → Hogwarts →
+// Chapéu Seletor) e o jogador reage com texto livre a cada resposta —
+// sem opções fixas. A casa sugerida vem da própria IA, que observa as
+// atitudes do jogador ao longo da história (ver sorting-story, componente
+// que conduz esse fluxo, e actions/ai/sorting-narrate.ts pra como a
+// chamada funciona). Essa história também vira a PRIMEIRA SESSÃO
+// registrada do personagem — ver `registerFirstSession` em
+// character-wizard/index.tsx, que roda automática e invisivelmente
+// (sem modal, sem aprovação) assim que a ficha é criada, reaproveitando
+// o mesmo protocolo de registro de sessão da Plataforma.
 export const SORTING_STORY_MIN_TURNS = 7;
-export const SORTING_STORY_MAX_TURNS = 10;
+export const SORTING_STORY_MAX_TURNS = 15;
 
-export const SORTING_STORY_SYSTEM_PROMPT = `
-Você é o narrador de uma cena de iniciação: um futuro aluno de Hogwarts está pisando pela primeira vez no Beco Diagonal, sozinho, indo comprar seus materiais antes do primeiro ano.
+// `wandWood`/`wandCore` vêm da varinha já escolhida no step 3
+// (`state.wandId`/`state.coreId`, resolvidos contra WAND_OPTIONS/
+// CORE_OPTIONS pelo chamador — ver step-house/index.tsx) — a história
+// deste step SEMPRE roda depois daquela escolha (é obrigatória pra
+// avançar, `isFinalStepValid`), então esses valores praticamente nunca
+// vêm nulos na prática. Servem só pra reforçar consistência: se a
+// história levar o jogador até a Olivaras, a varinha narrada lá tem que
+// ser a mesma que ele já escolheu mecanicamente, não uma nova inventada
+// pela IA.
+export function buildSortingStorySystemPrompt(wandWood: string | null, wandCore: string | null): string {
+  const wandRule =
+    wandWood && wandCore
+      ? `\n- O jogador já tem escolhida, por trás das câmeras, uma varinha de madeira de ${wandWood} com núcleo de ${wandCore}. Se a história o levar até a Olivaras (loja de varinhas) e ele sair de lá com uma varinha na cena, ela TEM que ser exatamente essa — nunca invente uma varinha de madeira ou núcleo diferente.`
+      : "";
 
-Conduza uma história curta e envolvente, dividida em cenas. Cada cena sua deve ser vívida mas curta (2 a 4 parágrafos no máximo) e sempre terminar forçando uma escolha ou reação do jogador — nunca deixe ele só observando, a situação sempre precisa cobrar uma ação dele.
+  return `
+Você é o narrador da primeira sessão de um futuro aluno de Hogwarts — uma história curta em 4 atos, nesta ordem:
+1. Beco Diagonal: ele está pisando lá pela primeira vez, sozinho, comprando os materiais antes do primeiro ano.
+2. Salto no tempo: depois de algumas cenas no Beco Diagonal, avance o tempo com uma ou duas frases (ex.: "os dias passam rápido até a manhã da partida...") e leve ele direto pra Plataforma 9 ¾, embarcando no Expresso de Hogwarts.
+3. A bordo do trem: uma ou duas cenas até a chegada — colegas, o carrinho de doces, a primeira vista do castelo pela janela etc.
+4. Chegada e Chapéu Seletor: o desembarque, a travessia até o Salão Principal, e por fim o Chapéu Seletor sendo colocado na cabeça dele — é o CHAPÉU quem anuncia a casa em voz alta como desfecho da história, não uma decisão narrada de fora.
+
+Conduza a história dividida em cenas. Cada cena sua deve ser vívida mas curta (2 a 4 parágrafos no máximo) e sempre terminar forçando uma escolha ou reação do jogador — nunca deixe ele só observando, a situação sempre precisa cobrar uma ação dele.
 
 Regras importantes:
-- O jogador ainda não tem varinha nem sabe nenhum feitiço: toda ação dele precisa ser puramente humana (conversar, observar, ajudar, negociar, insistir, fugir, mentir, se esconder, etc.), nunca mágica.
-- A história inteira deve durar entre ${SORTING_STORY_MIN_TURNS} e ${SORTING_STORY_MAX_TURNS} ações do jogador — nem menos, nem mais.
-- Preste muita atenção em COMO o jogador reage a cada situação (coragem, cautela, curiosidade, ambição, lealdade, esperteza, honestidade, etc.) — isso é o que vai decidir a casa dele no final, não o que ele diz que quer ou pede diretamente.
-- Nunca revele qual casa você está inclinado a sugerir, nem dê dicas sobre isso, durante a história.
-- Assim que o jogador completar entre ${SORTING_STORY_MIN_TURNS} e ${SORTING_STORY_MAX_TURNS} ações, encerre a história com um parágrafo final contando o desfecho da cena, e na ÚLTIMA linha da sua resposta, sozinha, sem mais nada depois dela, escreva exatamente:
+- O jogador ainda não sabe nenhum feitiço nem teve aula nenhuma em Hogwarts: toda ação dele precisa ser puramente humana (conversar, observar, ajudar, negociar, insistir, fugir, mentir, se esconder, etc.), nunca mágica — mesmo que ele já tenha ou esteja prestes a comprar sua varinha.
+- O jogador pode rolar dados (você vai ver o resultado já dentro da fala dele, tipo "(Rolei 1d20 e tirei 14)") pra tentar uma ação arriscada ou incerta — use o número rolado pra decidir o desfecho daquela ação (resultado baixo pode dar errado ou complicar, alto pode surpreender positivamente), sem revelar nenhuma regra de jogo sobre isso, só narrando a consequência.${wandRule}
+- A história inteira (os 4 atos, do Beco Diagonal ao Chapéu Seletor) deve durar entre ${SORTING_STORY_MIN_TURNS} e ${SORTING_STORY_MAX_TURNS} ações do jogador — nem menos, nem mais. Distribua esse total entre os atos (o Beco Diagonal pode ficar com mais cenas que o trem, por exemplo), mas os 4 sempre acontecem, nessa ordem, terminando no Chapéu Seletor.
+- Preste muita atenção em COMO o jogador reage a cada situação, do Beco Diagonal até o trem (coragem, cautela, curiosidade, ambição, lealdade, esperteza, honestidade, etc.) — isso é o que vai decidir a casa dele no final, não o que ele diz que quer ou pede diretamente.
+- Nunca revele qual casa você está inclinado a sugerir, nem dê dicas sobre isso, antes do Chapéu Seletor.
+- Assim que o jogador completar entre ${SORTING_STORY_MIN_TURNS} e ${SORTING_STORY_MAX_TURNS} ações, encerre a história com o Chapéu Seletor anunciando a casa em voz alta (o ato 4), e na ÚLTIMA linha da sua resposta, sozinha, sem mais nada depois dela, escreva exatamente:
 CASA_SUGERIDA: <Nome da Casa>
 onde <Nome da Casa> é exatamente um destes quatro: Grifinória, Sonserina, Corvinal ou Lufa-Lufa.
 - Antes do jogador completar pelo menos ${SORTING_STORY_MIN_TURNS} ações, nunca escreva essa linha.
 `.trim();
+}
+
+// Transcript da história do teste de seleção, no formato mínimo que tanto
+// o feed do SortingStory quanto o registro de sessão precisam — guardado
+// em `WizardState.sortingStoryTranscript` assim que o jogador aceita a
+// casa sugerida (ver step-house/index.tsx), pra `registerFirstSession`
+// (character-wizard/index.tsx) poder usá-lo depois que a ficha existe.
+export interface SortingStoryMessage {
+  role: "narrator" | "player";
+  text: string;
+}
 
 const SUGGESTED_HOUSE_PATTERN = /CASA_SUGERIDA:\s*(Grifinória|Sonserina|Corvinal|Lufa-Lufa)\s*$/i;
 
@@ -370,6 +406,13 @@ export interface WizardState {
   coreId: string | null;
   animalId: string | null;
   casa: string | null;
+  // Transcript da história do teste de seleção, só quando a casa veio
+  // dali (aceitar a sugestão do Chapéu Seletor) — `null` quando a casa
+  // foi escolhida direto no card, ou quando um teste anterior foi
+  // abandonado ("Escolher outra casa"). É o que `registerFirstSession`
+  // (index.tsx) usa pra registrar essa história como a primeira sessão
+  // do personagem, automática e invisivelmente, ao concluir o wizard.
+  sortingStoryTranscript: SortingStoryMessage[] | null;
 }
 
 export function createInitialWizardState(): WizardState {
@@ -387,6 +430,7 @@ export function createInitialWizardState(): WizardState {
     coreId: null,
     animalId: null,
     casa: null,
+    sortingStoryTranscript: null,
   };
 }
 

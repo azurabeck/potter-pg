@@ -92,6 +92,34 @@
         color: #fff;
       }
     }
+
+    &:disabled {
+      opacity: .45;
+      pointer-events: none;
+    }
+  }
+
+  // "Quem mais participa?" (ninguém / IA / outros jogadores) — mesmo
+  // fieldset de __radios, só empilhado em vez de lado a lado (o rótulo
+  // "Outros jogadores da mesa" não cabe numa linha só junto dos outros).
+  &__radios--column {
+    flex-direction: column;
+    gap: 12.5px;
+  }
+
+  // Checkboxes de "quem participa" (só jogadores online) — cada um reusa
+  // o visual de __toggle-row, só empilhados com espaçamento próprio em
+  // vez do margin-top pensado pra um toggle sozinho.
+  &__participant-list {
+    margin-top: 12.5px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    .platform-settings__toggle-row {
+      margin-top: 0;
+      font-size: 13.75px;
+    }
   }
 
   &__radio {
@@ -163,6 +191,10 @@
     }
   }
 
+  &__toggle-row input:disabled + &__toggle {
+    opacity: .5;
+  }
+
   &__field {
     margin-top: 18.75px;
     display: grid;
@@ -188,6 +220,11 @@
 
       &:focus {
         border-color: #8f79ff;
+      }
+
+      &:disabled {
+        opacity: .5;
+        cursor: not-allowed;
       }
     }
 
@@ -286,6 +323,11 @@
       &::placeholder {
         color: #716a8e;
       }
+
+      &:disabled {
+        opacity: .5;
+        cursor: not-allowed;
+      }
     }
 
     button {
@@ -303,6 +345,15 @@
 
       &:hover {
         background: #7462dc;
+      }
+
+      &:disabled {
+        opacity: .5;
+        cursor: not-allowed;
+
+        &:hover {
+          background: #6655c7;
+        }
       }
     }
   }

@@ -5,6 +5,7 @@
   inset: 0;
   z-index: 100;
   background: rgba(8, 6, 26, 0.82);
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   display: flex;
   align-items: center;

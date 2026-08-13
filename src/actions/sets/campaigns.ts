@@ -32,7 +32,14 @@ export async function appendSessionToCampaign(character: Character, events: Camp
     .filter((campaign) => campaign.campaign_year === character.ano)
     .sort((a, b) => b.order - a.order)[0];
 
-  if (target) {
+  // `target?.id` (não só `target`) — documento sem id de verdade (ex.:
+  // dado antigo/importado com um campo "id" próprio dentro do payload,
+  // que sobrescreveria o `doc.id` de verdade no spread de
+  // `getAllCampaigns`) quebrava `doc(db, COLLECTIONS.CAMPAIGNS, undefined)`
+  // com "Document references must have an even number of segments" — cai
+  // pro mesmo caminho de "nenhuma campanha do ano ainda", que cria uma
+  // nova, em vez de derrubar o encerramento inteiro.
+  if (target?.id) {
     const nextOrder = target.sessions.reduce((max, event) => Math.max(max, event.order || 0), 0) + 1;
     const renumbered = events.map((event, index) => ({ ...event, order: nextOrder + index }));
     await updateDoc(doc(db, COLLECTIONS.CAMPAIGNS, target.id), {

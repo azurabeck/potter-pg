@@ -62,7 +62,8 @@
   &__encounter-request {
     display: flex;
     align-items: center;
-    gap: 12.5px;
+    flex-wrap: wrap;
+    gap: 8.75px 12.5px;
     padding: 10px 15px;
     background: rgba(102, 85, 199, 0.18);
     border-left: 2px solid #6655c7;
@@ -74,7 +75,8 @@
     }
 
     p {
-      flex: 1;
+      flex: 1 1 180px;
+      min-width: 0;
       margin: 0;
       font-size: 15px;
 
@@ -86,7 +88,11 @@
 
   &__encounter-request-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
+    // Igual ao invite-banner: quando quebra linha (`flex-wrap` acima),
+    // alinha embaixo do texto em vez de ficar preso na borda direita.
+    margin-left: 30px;
   }
 
   &__encounter-accept,
@@ -352,6 +358,7 @@
   place-items: center;
   padding: 30px;
   background: rgba(9, 7, 24, 0.74);
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
 
   &__panel {

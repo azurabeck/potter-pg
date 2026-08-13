@@ -95,7 +95,7 @@ export default function Personagens() {
   const petImage = viewedCharacter.pet_url || DEFAULT_PET_IMAGE;
   const carouselWindow = getCarouselWindow(roster, viewedCharacter.id);
   const activeWindowIndex = carouselWindow.findIndex((character) => character.id === viewedCharacter.id);
-  const houseCupStandings = buildHouseCupStandings(table, roster);
+  const houseCupStandings = buildHouseCupStandings(table);
 
   const heroStyle = backgroundUrl
     ? {

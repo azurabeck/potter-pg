@@ -103,15 +103,36 @@ puxa a próxima cena, igual a uma narração de sessão normal (mesma ideia
 de `pages/plataforma`, só que aqui é uma IA fixa do projeto, não a
 configurada pelo usuário — ver por quê logo abaixo).
 
-- **Prompt fixo**: `` (`functions.ts`)
-  instrui a IA a narrar no idioma do local do usuário uma cena de iniciação no Beco Diagonal, sempre
-  terminando cada trecho numa situação que força uma ação do jogador;
-  deixa explícito que o jogador ainda não tem varinha nem feitiços
-  (ações só podem ser humanas — conversar, ajudar, fugir, mentir etc.);
-  fixa a história entre `SORTING_STORY_MIN_TURNS` (7) e
-  `SORTING_STORY_MAX_TURNS` (10) ações do jogador; e pede pra IA prestar
-  atenção em **como** o jogador reage (não no que ele diz que quer) pra
-  decidir a casa no final.
+- **Prompt** (`buildSortingStorySystemPrompt`, `functions.ts`): monta o
+  texto que instrui a IA a narrar no idioma do local do usuário uma cena
+  de iniciação no Beco Diagonal, sempre terminando cada trecho numa
+  situação que força uma ação do jogador; deixa explícito que o jogador
+  ainda não sabe feitiços (ações só podem ser humanas — conversar,
+  ajudar, fugir, mentir etc. — mesmo já tendo varinha); fixa a história
+  entre `SORTING_STORY_MIN_TURNS` (7) e `SORTING_STORY_MAX_TURNS` (10)
+  ações do jogador; e pede pra IA prestar atenção em **como** o jogador
+  reage (não no que ele diz que quer) pra decidir a casa no final. Vira
+  função (em vez de string fixa) porque recebe `wandWood`/`wandCore` —
+  ver "Consistência da varinha" abaixo.
+- **Dados**: uma linha de botões `d4`–`d20` (`DICE`/`randomDieResult`,
+  reaproveitados de `pages/plataforma/functions.ts`) acima do campo de
+  ação — rolar um não dispara turno nenhum sozinho, só encaixa o
+  resultado no início do texto que o jogador está prestes a mandar
+  (`rollDie` em `sorting-story/index.tsx`, ex.: "(Rolei 1d20 e tirei 14)
+  tento acalmar o coruja"), editável antes de enviar. O prompt instrui a
+  IA a usar esse número pra decidir o desfecho da ação, sem virar um
+  sistema de regras separado — mesmo espírito dos dados soltos da
+  Plataforma (`rollDie` lá também só registra, quem interpreta o
+  resultado é sempre quem está narrando).
+- **Consistência da varinha**: a varinha (madeira + núcleo) já foi
+  escolhida no step anterior (obrigatória pra chegar até aqui, ver
+  `isFinalStepValid`) — `step-house/index.tsx` resolve `state.wandId`/
+  `state.coreId` contra `WAND_OPTIONS`/`CORE_OPTIONS` e passa os nomes
+  pra `SortingStory` (`wandWood`/`wandCore` props), que embute isso no
+  prompt: se a história do jogador o levar até a Olivaras e ele sair de
+  lá com uma varinha na cena, o prompt exige que seja exatamente essa
+  mesma — a IA nunca deve inventar uma varinha diferente da já escolhida
+  mecanicamente.
 - **Sinal de fim**: a regra mais importante do prompt é que, ao encerrar
   a história (só depois de pelo menos 7 ações), a IA escreva como
   última linha da resposta, sozinha, exatamente `CASA_SUGERIDA: <Nome
@@ -155,12 +176,44 @@ ficha (`dinheiro`,
 não faz parte da criação.
 
 Ao concluir (`submit` em `index.tsx`): chama `createPlayerCharacter`
-com `user.uid`, depois `refreshCharacters()` (novo em
-`context/character`) — que recarrega `characters` do Firestore sem
-esperar o próximo mount. Isso faz `App.tsx` enxergar
-`characters.length > 0` no próximo render e trocar o wizard pelo app
-normal automaticamente, sem precisar de navegação manual nem reload de
-página.
+com `user.uid`, dispara `registerFirstSession` (ver seção própria
+abaixo, sem `await` — não trava a conclusão), depois
+`refreshCharacters()` (novo em `context/character`) — que recarrega
+`characters` do Firestore sem esperar o próximo mount. Isso faz
+`App.tsx` enxergar `characters.length > 0` no próximo render e trocar o
+wizard pelo app normal automaticamente, sem precisar de navegação
+manual nem reload de página.
+
+## Primeira sessão automática (`registerFirstSession`, `index.tsx`)
+
+Quando a casa veio do teste de seleção (`state.sortingStoryTranscript`
+preenchido — ver seção "Teste de seleção" acima), essa história vira a
+PRIMEIRA SESSÃO registrada do personagem, sozinha, sem nenhum modal nem
+clique do jogador: mesmo protocolo de registro de sessão que a
+Plataforma usa ao clicar em "Encerrar" (`buildSessionRegistrationPrompt`/
+`parseSessionRegistration` e os `apply*` de
+`pages/plataforma/functions.ts`, reaproveitados direto — cross-page
+import, mesmo padrão de `pages/personagens/functions.ts`), só que
+chamado via `sortingNarrate` (a IA fixa do projeto) em vez do
+`narrate`/provedor configurado pelo usuário, que nesse ponto do fluxo
+ainda nem existe. Escolher a casa direto no card (sem teste) deixa
+`sortingStoryTranscript` em `null` — `registerFirstSession` não faz
+nada nesse caso, não existe "sessão" nenhuma pra registrar.
+
+Aplica automaticamente o que o fluxo normal já aplica sem aprovação:
+maestria de feitiço/poção (tende a ficar vazio — personagem novo não
+sabe feitiço nenhum ainda), inventário, dinheiro, adversários
+encontrados (`updateCharacterAfterSession`), pontos de casa
+(`addHousePoints`, usando o `hostUserId` de `useCharacter()` — o próprio
+usuário quando não é convidado de mesa alheia), o evento na campanha do
+1º ano (`appendSessionToCampaign`, cria a campanha na hora já que é a
+primeira sessão) e vínculo a NPCs já existentes (`linkNpcToCharacter`).
+Deixa de fora, de propósito, `mystery_suggestions` e
+`npc_creation_suggestions` — no fluxo normal exigem um clique de
+aprovação em `EndSessionModal`; sem modal nenhum aqui, ninguém aprovaria
+nada, então nunca são criados. Qualquer erro é só `console.error` — a
+ficha já foi criada com sucesso antes disso rodar, então nada aqui pode
+travar o wizard nem aparecer como falha pro jogador.
 
 ## Próximos passos (fora do escopo desta versão)
 

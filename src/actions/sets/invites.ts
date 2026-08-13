@@ -5,7 +5,7 @@
 import { addDoc, collection, doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "@/services/firebase_settings";
 import { COLLECTIONS } from "@/services/genene_settings";
-import { ensureTableExists } from "@/actions/sets/table";
+import { ensureTableExists, syncTableMembers } from "@/actions/sets/table";
 import type { TableInviteStatus } from "@/utils/types";
 
 /** Devolve o id do convite criado — HistoryPanel usa pra acompanhar o status depois (ver settings-modal). */
@@ -17,8 +17,10 @@ export async function createInvite(
 ): Promise<string> {
   // Primeiro convite do anfitrião: garante que a mesa (colecao "tables",
   // Taça das Casas) já existe, em vez de só nascer quando alguém
-  // encerrar a primeira sessão (ver ensureTableExists).
+  // encerrar a primeira sessão (ver ensureTableExists), e que o próprio
+  // anfitrião já conta como membro dela (ver syncTableMembers).
   await ensureTableExists(hostUserId);
+  await syncTableMembers(hostUserId, [hostCharacterId]);
 
   const invitesRef = collection(db, COLLECTIONS.INVITES);
   const docRef = await addDoc(invitesRef, {
@@ -44,13 +46,18 @@ export async function respondToInvite(inviteId: string, status: "accepted" | "re
  * separado de `respondToInvite` porque aceitar o convite (no aviso
  * global) pode acontecer antes do convidado terminar o wizard de
  * criação — nesse momento ele ainda não tem personagem pra registrar.
+ * Também garante que o personagem já entra como membro da mesa do
+ * anfitrião (`syncTableMembers`), em vez de só aparecer lá quando
+ * ganhar o primeiro ponto de casa.
  */
 export async function recordGuestCharacter(
   inviteId: string,
+  hostUserId: string,
   guestUserId: string,
   guestCharacterId: string,
   guestCharacterName: string
 ): Promise<void> {
   const inviteRef = doc(db, COLLECTIONS.INVITES, inviteId);
   await updateDoc(inviteRef, { guestUserId, guestCharacterId, guestCharacterName });
+  await syncTableMembers(hostUserId, [guestCharacterId]);
 }
