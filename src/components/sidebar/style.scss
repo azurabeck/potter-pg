@@ -223,5 +223,32 @@
 
   @media (max-width: 720px) {
     @include sidebar-icon-only;
+
+    // Menu inteiro escondido (botão de seta virou hambúrguer, ver
+    // index.tsx) — a coluna do grid (App.scss) já vai a 0 via
+    // `--sidebar-width`; zera o padding horizontal aqui pra não sobrar
+    // nenhuma faixa vazada nas bordas de um container de largura 0.
+    &--mobile-hidden {
+      padding-left: 0;
+      padding-right: 0;
+      overflow: hidden;
+
+      // `position: fixed` escapa do `overflow: hidden`/largura 0 do pai
+      // (não há nenhuma propriedade aqui que crie um novo containing
+      // block pra position:fixed) — continua clicável, flutuando sobre o
+      // conteúdo, no canto onde o menu costumava começar.
+      .sidebar__collapse-toggle {
+        position: fixed;
+        top: 18px;
+        left: 15px;
+        z-index: 1150;
+        width: 42px;
+        height: 42px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        background: $color-bg-panel;
+        box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4);
+      }
+    }
   }
 }
