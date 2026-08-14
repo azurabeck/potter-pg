@@ -1,6 +1,8 @@
 // src/utils/types.ts
 // Tipos compartilhados entre actions, pages e components.
 
+import type { Timestamp } from "firebase/firestore";
+
 export interface MasteryEffect {
   from: number;
   to: number;
@@ -381,7 +383,10 @@ export interface CampaignSessionEvent {
 // Documento da colecao "campaigns": um bloco de campanha (ex: "Campanha 22
 // - O Reflexo Dourado") pertencente a um personagem (`character_id`),
 // contendo varios eventos em `sessions`. Um personagem referencia varios
-// desses documentos em `campaign_ids` — ver actions/get/campaigns.ts.
+// desses documentos em `campaign_ids` — ver `linkCampaignToCharacter` em
+// actions/sets/campaigns.ts (quem grava esse array) e
+// actions/get/campaigns.ts (leitura, hoje ainda por `character_id`, não
+// por esse array — ver comentário lá).
 export interface Campaign {
   id: string;
   user_id: string;
@@ -391,6 +396,8 @@ export interface Campaign {
   order: number;
   sessions: CampaignSessionEvent[];
   year: number;
+  created_at?: Timestamp;
+  updated_at?: Timestamp;
 }
 
 // Uma fala do feed de narração (jogador ou "Narrador"). Também é a forma

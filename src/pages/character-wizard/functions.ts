@@ -12,6 +12,11 @@ import sonFlag from "@/assets/images/son_flag.png";
 // wizard (ver step-identity, que rola o HP inicial nesse lugar).
 export const STARTING_YEAR = 1;
 
+// Dinheiro inicial de todo personagem novo — dá pra cobrir a lista de
+// material do 1º ano (gasto médio de ~3 galeões) com uma folga pra
+// imprevistos durante o teste de seleção, sem sobrar rico demais.
+export const STARTING_MONEY = { galeoes: 3, sicles: 15, nuques: 15 };
+
 export const HOUSES = ["Grifinória", "Sonserina", "Corvinal", "Lufa-Lufa"];
 
 // Bandeira de cada casa (step-house, tanto na escolha direta quanto no
@@ -340,6 +345,7 @@ Conduza a história dividida em cenas, todas ali. Cada cena sua deve ser vívida
 
 Regras importantes:
 - O jogador ainda não sabe nenhum feitiço nem teve aula nenhuma em Hogwarts: toda ação dele precisa ser puramente humana (conversar, observar, ajudar, negociar, insistir, fugir, mentir, se esconder, etc.), nunca mágica — mesmo que ele já tenha ou esteja prestes a comprar sua varinha.
+- Todo NPC que aparecer na cena (vendedor, outro futuro aluno, funcionário de loja etc.) tem que ser um personagem ORIGINAL, inventado por você — nunca um personagem do cânone de Harry Potter (nada de Hagrid, Dumbledore, McGonagall, Olivaras/Ollivander, Weasley, etc., nem citado de passagem). Pode usar o nome da loja "Olivaras" como local, mas quem atende lá dentro é um NPC novo, com nome próprio inventado.
 - Isso é uma sessão de RPG de verdade, com dados: sempre que a ação do jogador for arriscada, incerta ou disputada (convencer alguém, escapar de encrenca, notar algo escondido, correr, equilibrar, etc.), peça explicitamente uma rolagem antes de narrar o desfecho (ex.: "role um d20 pra ver se consegue...") — não resolva essas ações de cabeça, espere o número. Você vai ver o resultado já embutido na fala seguinte do jogador, tipo "(Rolei 1d20 e tirei 14)"; use esse número pra decidir o desfecho (baixo pode dar errado ou complicar, alto pode surpreender positivamente), sem revelar nenhuma regra de jogo sobre isso, só narrando a consequência. Ações puramente sociais ou triviais, sem risco nenhum, não precisam de rolagem.${wandRule}
 - A história inteira deve durar entre ${SORTING_STORY_MIN_TURNS} e ${SORTING_STORY_MAX_TURNS} ações do jogador — nem menos, nem mais. Todas elas ainda dentro do Beco Diagonal.
 - Preste muita atenção em COMO o jogador reage a cada situação (coragem, cautela, curiosidade, ambição, lealdade, esperteza, honestidade, etc.) — isso é o que vai decidir a casa dele no final, não o que ele diz que quer ou pede diretamente.
@@ -511,7 +517,7 @@ export function buildCharacterPayload(state: WizardState): Omit<Character, "id" 
     caracteristicas_fisicas: state.caracteristicasFisicas.trim(),
     historia: state.historia.trim(),
     atributos,
-    dinheiro: { galeoes: 0, sicles: 0, nuques: 0 },
+    dinheiro: { ...STARTING_MONEY },
     habilidades: {},
     inventario: { itens: [] },
     pocoes: {},

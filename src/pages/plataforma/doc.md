@@ -145,8 +145,10 @@ sempre escrito no campo `dinheiro` principal, mesmo que o personagem
 ainda usasse só o legado — ver `resolveCharacterMoney` em `@/utils`),
 histórico de campanha (`session_history`, anexado à campanha do ano
 letivo atual via `appendSessionToCampaign`,
-`actions/sets/campaigns.ts`) e sugestões de mistério
-(`mystery_suggestions` — nunca aplicadas sozinhas, ver abaixo).
+`actions/sets/campaigns.ts` — que também atrela o id da campanha ao
+personagem em `campaign_ids`, `arrayUnion`, depois de gravar) e
+sugestões de mistério (`mystery_suggestions` — nunca aplicadas sozinhas,
+ver abaixo).
 
 Tudo isso (exceto mistério) é aplicado **direto**, sem confirmação:
 `updateCharacterAfterSession` (`actions/sets/characters.ts`, primeira

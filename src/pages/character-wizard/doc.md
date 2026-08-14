@@ -196,33 +196,67 @@ manual nem reload de página.
 Quando a casa veio do teste de seleção (`state.sortingStoryTranscript`
 preenchido — ver seção "Teste de seleção" acima), essa história vira a
 PRIMEIRA SESSÃO registrada do personagem, sozinha, sem nenhum modal nem
-clique do jogador: mesmo protocolo de registro de sessão que a
-Plataforma usa ao clicar em "Encerrar" (`buildSessionRegistrationPrompt`/
-`parseSessionRegistration` e os `apply*` de
-`pages/plataforma/functions.ts`, reaproveitados direto — cross-page
-import, mesmo padrão de `pages/personagens/functions.ts`), só que
-chamado via `sortingNarrate` (a IA fixa do projeto) em vez do
-`narrate`/provedor configurado pelo usuário, que nesse ponto do fluxo
-ainda nem existe. Escolher a casa direto no card (sem teste) deixa
-`sortingStoryTranscript` em `null` — `registerFirstSession` não faz
-nada nesse caso, não existe "sessão" nenhuma pra registrar.
+clique do jogador — o MESMO registro estruturado que "Encerrar sessão"
+faz na Plataforma (`buildSessionRegistrationPrompt`/
+`runSessionRegistration`, `pages/plataforma/index.tsx`), reaproveitando
+as funções puras de lá (`buildSessionRegistrationPrompt`,
+`parseSessionRegistration`, `emptySessionRegistration`, os `apply*` —
+cross-page import de `pages/plataforma/functions.ts`, mesmo padrão de
+`pages/personagens/functions.ts`). Escolher a casa direto no card (sem
+teste) deixa `sortingStoryTranscript` em `null` — `registerFirstSession`
+não faz nada nesse caso, não existe "sessão" nenhuma pra registrar.
 
-Aplica TODOS os efeitos que o registro pode gerar, sem exceção — igual a
-encerrar uma sessão de verdade na Plataforma: maestria de feitiço/poção
-(tende a ficar vazio — personagem novo não sabe feitiço nenhum ainda),
-inventário, dinheiro, adversários encontrados
-(`updateCharacterAfterSession`), pontos de casa (`addHousePoints`,
-usando o `hostUserId` de `useCharacter()` — o próprio usuário quando não
-é convidado de mesa alheia), o evento na campanha do 1º ano
-(`appendSessionToCampaign`, cria a campanha na hora já que é a primeira
-sessão), vínculo a NPCs já existentes (`linkNpcToCharacter`) e — mesmo
-esses dois exigindo um clique de aprovação em `EndSessionModal` no
-fluxo normal — mistério novo/atualizado (`applyMysterySuggestion`) e
-criação de NPC novo (`createNpcFromSuggestion`), aplicados direto: sem
-modal nenhum aqui, não tem quem aprovar, e o registro precisa sair
-completo. Qualquer erro é só `console.error` — a ficha já foi criada com
-sucesso antes disso rodar, então nada aqui pode travar o wizard nem
-aparecer como falha pro jogador.
+**Importante**: o registro NUNCA grava nada no campo `historia` da
+ficha — teve uma versão anterior desta função que gerava um resumo em
+prosa separado e salvava ali, mas o registro de sessão mora inteiro na
+coleção `campaigns` (igual à Plataforma), então essa etapa foi removida.
+`historia` continua sendo só o texto que o próprio jogador escreve no
+step de identidade.
+
+Aplica maestria de feitiço/poção (tende a ficar vazio, personagem novo
+não sabe feitiço nenhum ainda), inventário, dinheiro, adversários
+encontrados (`updateCharacterAfterSession`), pontos de casa
+(`addHousePoints`, usando o `hostUserId` de `useCharacter()`), o evento
+na campanha do 1º ano (`appendSessionToCampaign`, cria a campanha na
+hora já que é a primeira sessão), vínculo a NPCs já existentes
+(`linkNpcToCharacter`) e — mesmo essas duas exigindo um clique de
+aprovação em `EndSessionModal` no fluxo normal — mistério
+novo/atualizado (`applyMysterySuggestion`) e criação de NPC novo
+(`createNpcFromSuggestion`), aplicados direto: sem modal nenhum aqui,
+não tem quem aprovar, e o registro precisa sair completo.
+
+**`campaigns` → `character.campaign_ids`**: `appendSessionToCampaign`
+(`actions/sets/campaigns.ts`, compartilhada com a Plataforma) grava o
+documento da campanha e, logo depois, atrela o id dele ao personagem em
+`campaign_ids` (`linkCampaignToCharacter`, `arrayUnion` — nunca
+duplica). A LEITURA (`pages/sessoes`, e o contexto que a IA recebe pra
+narrar) continua filtrando por `character_id` no documento da campanha,
+não por esse array — os dois sempre apontam pros mesmos documentos na
+prática, mas vale saber que `campaign_ids` hoje é só "atrelado", não
+"fonte de verdade pra leitura" (ver comentário em
+`actions/get/campaigns.ts`).
+
+**Garantia de que a campanha sempre recebe a sessão**: a chamada de IA
+do registro estruturado tem o próprio try/catch — se falhar (rede,
+GEMINI_KEY faltando, resposta fora do formato JSON esperado) cai pra
+`emptySessionRegistration()` em vez de abortar a função. Além disso, se
+`session_history` vier vazio (a IA decidiu que a sessão não teve evento
+nenhum digno de registro — pode acontecer numa sessão calma, só de
+compras) `registerFirstSession` monta um evento mínimo sozinho ("foi ao
+Beco Diagonal, comprou o material, selecionado pra `casa`") em vez de
+deixar a campanha sem nenhuma sessão. `appendSessionToCampaign` roda
+ANTES de qualquer outro efeito do registro (maestria, dinheiro etc.), de
+propósito — é o objetivo #1 dessa função, "Sessões" nunca mostrar
+"Nenhuma sessão registrada ainda" pra quem passou pelo teste de seleção.
+
+Usa `sortingNarrate` (a IA fixa do projeto) em vez do `narrate`/provedor
+configurado pelo usuário, que nesse ponto do fluxo ainda nem existe.
+Loga cada etapa com `console.log`/`console.error` prefixado `[primeira
+sessão]` — de propósito, já que essa função roda inteira sem UI: é o
+único jeito de diagnosticar se algo falhou (abrir o DevTools do
+navegador logo depois de concluir o wizard). Nada aqui pode travar o
+wizard nem aparecer como falha pro jogador — a ficha já foi criada com
+sucesso antes disso rodar.
 
 ## Próximos passos (fora do escopo desta versão)
 

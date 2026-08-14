@@ -2,6 +2,13 @@
 // Leitura da colecao "campaigns" — cada documento e um bloco de campanha
 // (ex: "Campanha 22 - O Reflexo Dourado") pertencente a um personagem,
 // com um array `sessions` de eventos/cenas que aconteceram nele.
+//
+// As duas queries abaixo filtram por `character_id` (campo no documento
+// da campanha) — não por `character.campaign_ids` (array no personagem,
+// escrito por `linkCampaignToCharacter` em actions/sets/campaigns.ts).
+// Os dois sempre apontam pros mesmos documentos na prática (toda escrita
+// em `campaigns` também atrela o id ao personagem), mas se um dia
+// divergirem, é `character_id` que decide o que aparece aqui.
 
 import { collection, getDocs, limit, orderBy, query, where } from "firebase/firestore";
 import { db } from "@/services/firebase_settings";

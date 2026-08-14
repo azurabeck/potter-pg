@@ -1,19 +1,21 @@
 @use "@/assets/styles/variables" as *;
 
+// Página normal, não modal: sem centralização vertical nem `max-height` +
+// scroll interno no card — o conteúdo flui naturalmente e é a PÁGINA
+// inteira que rola (um scroll só) quando um step é mais alto que a tela,
+// em vez de um scroll dentro do card por cima de outro na página.
 .character-wizard-page {
   min-height: 100vh;
   min-height: 100dvh; // desconta a barra do navegador mobile — ver App.scss
-  display: grid;
-  place-items: center;
-  padding: 30px;
+  padding: 40px 30px;
   background: radial-gradient(circle at 20% 10%, rgba(143, 124, 255, 0.2), transparent 30%),
     linear-gradient(135deg, #17132f, #221d45);
 
   &__card {
+    position: relative;
     width: 100%;
     max-width: 700px;
-    max-height: calc(100vh - 60px);
-    max-height: calc(100dvh - 60px);
+    margin: 0 auto;
     display: flex;
     flex-direction: column;
     padding: 42.5px 37.5px;
@@ -21,6 +23,32 @@
     border-radius: 15px;
     background: rgba(36, 32, 68, 0.96);
     box-shadow: 0 28px 70px rgba(7, 5, 24, 0.4);
+  }
+
+  &__submit-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    padding: 30px;
+    border-radius: 15px;
+    background: rgba(23, 19, 47, 0.92);
+    text-align: center;
+
+    svg {
+      color: $color-red-bright;
+    }
+
+    p {
+      margin: 0;
+      color: $color-text-light;
+      font-size: 15px;
+      font-weight: 600;
+    }
   }
 
   &__brand {
@@ -100,10 +128,6 @@
   &__content {
     flex: 1;
     min-height: 0;
-    overflow-y: auto;
-    padding-right: 5px;
-    scrollbar-width: thin;
-    scrollbar-color: #504776 transparent;
   }
 
   &__error {
@@ -162,8 +186,6 @@
     padding: 15px;
 
     &__card {
-      max-height: calc(100vh - 30px);
-      max-height: calc(100dvh - 30px);
       padding: 25px 20px;
       border-radius: 10px;
     }

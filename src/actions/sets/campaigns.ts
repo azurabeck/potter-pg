@@ -4,7 +4,7 @@
 // pages/plataforma/functions.ts) anexa a linha do tempo gerada pela IA
 // na campanha do ano letivo atual do personagem.
 
-import { addDoc, collection, doc, updateDoc } from "firebase/firestore";
+import { addDoc, arrayUnion, collection, doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "@/services/firebase_settings";
 import { COLLECTIONS } from "@/services/genene_settings";
 import { getAllCampaigns } from "@/actions/get/campaigns";
@@ -23,6 +23,15 @@ import type { Campaign, CampaignSessionEvent, Character } from "@/utils/types";
  * e `applyMysterySuggestion`) — sem ele a escrita batia num
  * permission-denied silencioso (só `console.error`, sem aparecer pro
  * usuário) sempre que essa era a primeira sessão do ano letivo.
+ *
+ * Depois de gravar (criar ou atualizar), o id da campanha é atrelado ao
+ * personagem em `character.campaign_ids` (`linkCampaignToCharacter`,
+ * `arrayUnion` — nunca duplica, e cobre tanto campanha nova quanto
+ * campanha já existente sendo atualizada de novo). Isso roda depois da
+ * escrita principal e nunca derruba a função por causa dela: a sessão em
+ * si (o que importa de verdade) já está salva em `campaigns` nesse
+ * ponto, então uma falha só em atrelar o id não deveria aparecer como
+ * "a sessão não registrou".
  */
 export async function appendSessionToCampaign(character: Character, events: CampaignSessionEvent[]): Promise<void> {
   if (events.length === 0) return;
@@ -44,7 +53,9 @@ export async function appendSessionToCampaign(character: Character, events: Camp
     const renumbered = events.map((event, index) => ({ ...event, order: nextOrder + index }));
     await updateDoc(doc(db, COLLECTIONS.CAMPAIGNS, target.id), {
       sessions: [...target.sessions, ...renumbered],
+      updated_at: serverTimestamp(),
     });
+    await linkCampaignToCharacter(character.id, target.id);
     return;
   }
 
@@ -59,5 +70,20 @@ export async function appendSessionToCampaign(character: Character, events: Camp
     year: new Date().getFullYear(),
   };
 
-  await addDoc(collection(db, COLLECTIONS.CAMPAIGNS), newCampaign);
+  const docRef = await addDoc(collection(db, COLLECTIONS.CAMPAIGNS), {
+    ...newCampaign,
+    created_at: serverTimestamp(),
+    updated_at: serverTimestamp(),
+  });
+  await linkCampaignToCharacter(character.id, docRef.id);
+}
+
+async function linkCampaignToCharacter(characterId: string, campaignId: string): Promise<void> {
+  try {
+    await updateDoc(doc(db, COLLECTIONS.CHARACTERS, characterId), {
+      campaign_ids: arrayUnion(campaignId),
+    });
+  } catch (error) {
+    console.error("Erro ao atrelar a campanha ao personagem:", error);
+  }
 }
